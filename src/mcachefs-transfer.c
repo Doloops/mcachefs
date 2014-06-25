@@ -508,7 +508,8 @@ mcachefs_transfer_do_writeback (struct mcachefs_file_t *mfile,
             mcachefs_notify_sync_end (mfile->path, 1);
             return;
         }
-        Log ("Will write back : real mtime=%lu, real size=%lu, metatstat mtime=%lu, metastat size=%lu\n", realstat.st_mtime, (unsigned long) realstat.st_size, timbuf->modtime, (unsigned long) mfile->transfer.total_size);
+        Log ("Will write back : real mtime=%lu, real size=%lu, metatstat mtime=%lu, metastat size=%lu\n", 
+                realstat.st_mtime, (unsigned long) realstat.st_size, timbuf->modtime, (unsigned long) mfile->transfer.total_size);
     }
     if (mcachefs_transfer_file (mfile, 0) == 0)
     {
@@ -682,8 +683,8 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
 
         adjusted_rate = (global_rate + rate) / 2;
 
-        if (mcachefs_get_transfer_max_rate () && adjusted_rate
-            >= mcachefs_get_transfer_max_rate ())
+        if (mcachefs_get_transfer_max_rate() && adjusted_rate
+            >= mcachefs_get_transfer_max_rate() )
         {
           /**
            * rate = max kb/s
@@ -709,7 +710,9 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
             nanosleep (&penalty, NULL);
         }
 
-        Log ("Transfered %luk of %luk (%lu%%), rate current=%lukb/s, global=%lukb/s, adjusted=%lukb/s, window size=%lu\n", ((unsigned long) offset) >> 10, ((unsigned long) size) >> 10, (unsigned long) (offset * 100 / size), (unsigned long) rate, (unsigned long) global_rate, (unsigned long) adjusted_rate, (unsigned long) window_size);
+        Log ("Transfered %luk of %luk (%lu%%), rate current=%lukb/s, global=%lukb/s, adjusted=%lukb/s, window size=%lu\n", 
+                ((unsigned long) offset) >> 10, ((unsigned long) size) >> 10, (unsigned long) (offset * 100 / size), 
+                (unsigned long) rate, (unsigned long) global_rate, (unsigned long) adjusted_rate, (unsigned long) window_size);
 
         if (global_rate < 10 && window_size > 1 << 12)
         {

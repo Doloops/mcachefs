@@ -188,7 +188,7 @@ int check_dir_exists(const char* cpath)
     char* parentpath;
     if ( stat(cpath, &sb) != 0 )
     {
-        Err("Path %s does not exist !\n", cpath);
+        Log("Path %s does not exist, creating it\n", cpath);
         parentpath = dirname(strdup(cpath));
         res = check_dir_exists(parentpath);
         free(parentpath);
@@ -201,7 +201,7 @@ int check_dir_exists(const char* cpath)
         if ( mkdir(cpath, 0755) != 0 )
         {
             Err("Could not create path %s\n", cpath);
-            return -1;            
+            return -1;
         }
         return 0;        
     }
