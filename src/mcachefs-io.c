@@ -113,7 +113,8 @@ mcachefs_read_wait_accessible (struct mcachefs_file_t *mfile, size_t size,
         read_wait_time.tv_sec = 0;
         read_wait_time.tv_nsec = WAIT_CACHE_INTERVAL;
         nanosleep (&read_wait_time, NULL);
-        Info ("Waiting for end of backing for file '%s', offset=%luk, size=%luk, end of segment=%luk\n", mfile->path, (unsigned long) offset >> 10, (unsigned long) size >> 10, (unsigned long) (offset + (off_t) size) >> 10);
+        Log ("Waiting for end of backing for file '%s', offset=%luk, size=%luk, end of segment=%luk\n", 
+            mfile->path, (unsigned long) offset >> 10, (unsigned long) size >> 10, (unsigned long) (offset + (off_t) size) >> 10);
         mcachefs_file_lock_file (mfile);
         waited_backing++;
     }

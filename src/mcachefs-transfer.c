@@ -750,7 +750,7 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
 
     gettimeofday (&now, NULL);
     interval = TIME_DIFF (now, begin_copy);
-    Info ("End of transfer (to %s) for '%s' : %ld usec, copied '%lu', rate=%lu kb/sec\n", tobacking ? "cache" : "source", 
+    Log ("End of transfer (to %s) for '%s' : %ld usec, copied '%lu', rate=%lu kb/sec\n", tobacking ? "cache" : "source", 
            mfile->path, interval, (unsigned long) size, (unsigned long) ((size * 1000) / interval));
 
     mcachefs_file_putfd (mfile, MCACHEFS_FILE_SOURCE_REAL);

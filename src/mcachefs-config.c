@@ -1,6 +1,7 @@
 #include "mcachefs.h"
 
 #include <libgen.h>
+#include <stddef.h>
 
 const char* DEFAULT_PREFIX = "/tmp/mcachefs";
 
@@ -11,6 +12,44 @@ void set_default_config(struct mcachefs_config* config);
 int check_dir_exists(const char* cpath);
 void check_file_dir_exists(const char* cpath);
     
+static int mcachefs_arg_proc(void *data, const char *arg, int key,
+                               struct fuse_args *outargs)
+{
+    (void) outargs;
+    Log("arg data=%p, arg=%s, key=%d, outargs=%p\n", data, arg, key, outargs);
+
+    struct mcachefs_config* config = (struct mcachefs_config*) data;
+    switch ( key )
+    {
+    case FUSE_OPT_KEY_NONOPT:
+        if ( config->source == NULL )
+        {
+            config->source = strdup(arg);
+            trim_last_separator(config->source);
+            return 0;
+        }
+        if ( config->mountpoint == NULL )
+        {
+            Log("Setting mountpoint to %s\n", arg);
+            config->mountpoint = strdup(arg);
+            trim_last_separator(config->mountpoint);
+            return 1;
+        }
+        Err("Syntax error : non-option argument '%s' is invalid !\n", arg);
+        return -1;        
+    }    
+    return 1;
+}
+
+static struct fuse_opt mcachefs_opts[] = {
+    { "cache=%s", offsetof(struct mcachefs_config,cache), 0 },
+    { "metafile=%s", offsetof(struct mcachefs_config,metafile), 0 },
+    { "journal=%s", offsetof(struct mcachefs_config,journal), 0 },
+    { "verbose=%lu", offsetof(struct mcachefs_config,verbose), 0 },
+    FUSE_OPT_END
+};
+
+    
 struct mcachefs_config* mcachefs_parse_config(int argc, char* argv[])
 {
     if ( argc < 3 )
@@ -18,26 +57,31 @@ struct mcachefs_config* mcachefs_parse_config(int argc, char* argv[])
         Err("Invalid number of arguments !\n");
         return NULL;
     }
-    if ( argv[1][0] == '-' )
-    {
-        Err("Invalid argument for source : %s\n", argv[1]);        
-        return NULL;
-    }
-    if ( argv[2][0] == '-' )
-    {
-        Err("Invalid argument for mountpoint : %s\n", argv[2]);
-        return NULL;
-    }
+
     struct mcachefs_config* config = (struct mcachefs_config*) malloc(sizeof(struct mcachefs_config));
     memset(config, 0, sizeof(struct mcachefs_config));
-    config->source = strdup(argv[1]);
-    trim_last_separator(config->source);
+
+    Log("config at %p\n", config);
     
-    config->mountpoint = strdup(argv[2]);
-    trim_last_separator(config->mountpoint);
+    config->fuse_args.argc = argc;
+    config->fuse_args.argv = argv;
+    config->fuse_args.allocated = 0;
+    int res = fuse_opt_parse(&(config->fuse_args), config, mcachefs_opts, mcachefs_arg_proc);
+
+    if ( res != 0 )
+    {
+        Err("Could not parse arguments !");
+        free(config);
+        return NULL;
+    }
+
+    Log("After fuse_opt_parse res=%d\n", res);
+    Log("After parse mp=%s\n", config->mountpoint);
 
     set_default_config(config);
     
+    mcachefs_dump_config(config);
+
     return config;
 }
 
@@ -59,7 +103,12 @@ void trim_last_separator(char* path)
 
 void set_default_config(struct mcachefs_config* config)
 {
-    char* normalized_mp = strdup(config->mountpoint), *cur;
+    const char* mp = config->mountpoint;
+    if ( *mp == '/' )
+    {
+        mp++;
+    }
+    char* normalized_mp = strdup(mp), *cur;
   
     for ( cur = normalized_mp ; *cur != 0 ; cur++ )
     {
@@ -69,13 +118,24 @@ void set_default_config(struct mcachefs_config* config)
         }
     }
     Info("Normalized mountpoint : %s\n", normalized_mp);
-    config->cache = (char*) malloc(PATH_MAX);
-    config->metafile = (char*) malloc(PATH_MAX);
-    config->journal = (char*) malloc(PATH_MAX);
+
+    if ( config->cache == NULL )
+    {
+        config->cache = (char*) malloc(PATH_MAX);
+        snprintf(config->cache, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "cache");
+    }
+
+    if ( config->metafile == NULL )
+    {    
+        config->metafile = (char*) malloc(PATH_MAX);
+        snprintf(config->metafile, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "metafile");    
+    }
     
-    snprintf(config->cache, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "cache");
-    snprintf(config->metafile, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "metafile");    
-    snprintf(config->journal, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "journal");
+    if ( config->journal == NULL )
+    {
+        config->journal = (char*) malloc(PATH_MAX);
+        snprintf(config->journal, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "journal");
+    }
 }
 
 void mcachefs_dump_config(struct mcachefs_config* config)
@@ -86,6 +146,12 @@ void mcachefs_dump_config(struct mcachefs_config* config)
     Info("* Cache %s\n", config->cache);
     Info("* Metafile %s\n", config->metafile);
     Info("* Journal %s\n", config->journal);    
+    
+    int argc;
+    for ( argc = 0 ; argc < config->fuse_args.argc ; argc++ )
+    {
+        Info("* Extra arg : %s\n", config->fuse_args.argv[argc]);
+    }
 }
 
 

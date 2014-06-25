@@ -23,10 +23,7 @@ main (int argc, char *argv[])
     
     config = mcachefs_parse_config(argc, argv);
     
-    mcachefs_dump_config(config);
-    
     mcachefs_set_current_config(config);
-
 
     mcachefs_file_timeslice_init_variables ();
 
@@ -52,8 +49,8 @@ main (int argc, char *argv[])
 #endif
 
     void *user_data = NULL;
-    int fuse_argc = argc -1;
-    char** fuse_argv = argv + 1;
+    int fuse_argc = config->fuse_args.argc;
+    char** fuse_argv = config->fuse_args.argv;
     fuse_main (fuse_argc, fuse_argv, &mcachefs_oper, user_data);
 
     Info ("Serving finished !\n");

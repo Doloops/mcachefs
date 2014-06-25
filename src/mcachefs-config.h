@@ -40,6 +40,8 @@ struct mcachefs_config
     FILE *log_fd;
     
     int transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPES];
+    
+    struct fuse_args fuse_args;
 };
 
 struct mcachefs_config* mcachefs_parse_config(int argc, char* argv[]);

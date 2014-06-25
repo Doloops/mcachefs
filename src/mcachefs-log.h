@@ -35,11 +35,15 @@
     fflush(mcachefs_config_log_fd()); } \
   while(0)
 
+#ifdef DEBUG
 #define Log(...) \
   do { \
     if(mcachefs_config_verbose() > 50 ) \
       __Log("LOG",__VA_ARGS__); \
    } while (0)
+#else
+#define Log(...) do {} while(0)
+#endif
 
 #define Info(...) __Log("INF",__VA_ARGS__)
 #define Warn(...) __Log("WRN",__VA_ARGS__)
