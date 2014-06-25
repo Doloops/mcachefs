@@ -5,8 +5,8 @@ OBJECTS += mcachefs-io.o mcachefs-lowlevel.o
 OBJECTS += mcachefs-config.o
 CC = gcc
 
-CFLAGS += -g -O0
-# CFLAGS += -O3  -fPIC
+# CFLAGS += -g -O0
+CFLAGS += -O3
 # CFLAGS += -pg
 CFLAGS += -DHAVE_CONFIG_H -I. -I. -I/usr/include/fuse -Wall -W -D_FILE_OFFSET_BITS=64
 LCFLAGS += -ldl -lpthread -lrt -lfuse
