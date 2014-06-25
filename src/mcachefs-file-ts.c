@@ -182,6 +182,11 @@ mcachefs_file_timeslice_do_freshen (struct mcachefs_file_t *mfile)
 void
 mcachefs_file_timeslice_freshen (struct mcachefs_file_t *mfile)
 {
+    if ( mfile->timeslice == mcachefs_file_timeslice_current )
+    {
+        Log("mfile already freshen\n");
+        return;
+    }
     mcachefs_file_lock ();
     mcachefs_file_timeslice_do_freshen (mfile);
     mcachefs_file_unlock ();
