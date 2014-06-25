@@ -200,13 +200,13 @@ mcachefs_cleanup_backing (struct mcachefs_file_t *mvops, int simulate)
     max_age = mcachefs_get_cleanup_backing_age ();
     prefix = strdup (mcachefs_get_cleanup_backing_prefix ());
 
-    Info ("Building backing list : prefix='%s', age=%d\n", prefix, max_age);
+    Info ("Building cache list : prefix='%s', age=%d\n", prefix, max_age);
 
-    backingfd = open (mcachefs_config_backing(), O_RDONLY);
+    backingfd = open (mcachefs_config_cache(), O_RDONLY);
 
     if (backingfd < 0)
     {
-        Err ("Could not open '%s'\n", mcachefs_config_backing());
+        Err ("Could not open '%s'\n", mcachefs_config_cache());
         return;
     }
 

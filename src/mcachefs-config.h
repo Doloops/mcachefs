@@ -11,11 +11,30 @@
 
 struct mcachefs_config
 {
-    char *mountpoint;
-    char *target;
-    char *backing;
-    char *metafile;
-    char *journal;
+    /*
+     * The actual fuse mountpoint
+     */
+    char* mountpoint;
+    
+    /*
+     * Source mountpoint
+     */
+    char* source;
+    
+    /*
+     * Cache mountpoint point
+     */
+    char* cache;
+    
+    /*
+     * Metadata cache file
+     */
+    char* metafile;
+    
+    /*
+     * Journal cache file
+     */
+    char* journal;
     
     int verbose;
     FILE *log_fd;
@@ -36,17 +55,31 @@ extern struct mcachefs_config* current_config;
 
 const char* mcachefs_config_mountpoint();
 
-const char* mcachefs_config_target();
+const char* mcachefs_config_source();
 
-const char* mcachefs_config_backing();
+const char* mcachefs_config_cache();
 
 const char* mcachefs_config_metafile();
 
 const char* mcachefs_config_journal();
 
-int mcachefs_config_verbose();
+static inline int mcachefs_config_verbose()
+{
+    if ( current_config == NULL )
+    {
+        return 100;
+    }
+    return current_config->verbose;
+}
 
-FILE* mcachefs_config_log_fd();
+static inline FILE* mcachefs_config_log_fd()
+{
+    if ( current_config == NULL )
+    {
+        return stderr;
+    }
+    return current_config->log_fd;
+}
 
 int mcachefs_config_transfer_threads_nb(int type);
 

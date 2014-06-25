@@ -4,6 +4,8 @@
 
 const char* DEFAULT_PREFIX = "/tmp/mcachefs";
 
+const int DEFAULT_VERBOSE = 0;
+
 void trim_last_separator(char* path);
 void set_default_config(struct mcachefs_config* config);
 int check_dir_exists(const char* cpath);
@@ -18,18 +20,18 @@ struct mcachefs_config* mcachefs_parse_config(int argc, char* argv[])
     }
     if ( argv[1][0] == '-' )
     {
-        Err("Invalid argument for target : %s\n", argv[1]);        
+        Err("Invalid argument for source : %s\n", argv[1]);        
         return NULL;
     }
     if ( argv[2][0] == '-' )
     {
-        Err("Invalid argument for target : %s\n", argv[1]);        
+        Err("Invalid argument for mountpoint : %s\n", argv[2]);
         return NULL;
     }
     struct mcachefs_config* config = (struct mcachefs_config*) malloc(sizeof(struct mcachefs_config));
     memset(config, 0, sizeof(struct mcachefs_config));
-    config->target = strdup(argv[1]);
-    trim_last_separator(config->target);
+    config->source = strdup(argv[1]);
+    trim_last_separator(config->source);
     
     config->mountpoint = strdup(argv[2]);
     trim_last_separator(config->mountpoint);
@@ -67,11 +69,11 @@ void set_default_config(struct mcachefs_config* config)
         }
     }
     Info("Normalized mountpoint : %s\n", normalized_mp);
-    config->backing = (char*) malloc(PATH_MAX);
+    config->cache = (char*) malloc(PATH_MAX);
     config->metafile = (char*) malloc(PATH_MAX);
     config->journal = (char*) malloc(PATH_MAX);
     
-    snprintf(config->backing, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "cache");
+    snprintf(config->cache, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "cache");
     snprintf(config->metafile, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "metafile");    
     snprintf(config->journal, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "journal");
 }
@@ -79,9 +81,9 @@ void set_default_config(struct mcachefs_config* config)
 void mcachefs_dump_config(struct mcachefs_config* config)
 {
     Info("mcachefs Configuration :\n");
-    Info("* Target %s\n", config->target);
     Info("* Mountpoint %s\n", config->mountpoint);
-    Info("* Cache %s\n", config->backing);
+    Info("* Source %s\n", config->source);
+    Info("* Cache %s\n", config->cache);
     Info("* Metafile %s\n", config->metafile);
     Info("* Journal %s\n", config->journal);    
 }
@@ -89,10 +91,11 @@ void mcachefs_dump_config(struct mcachefs_config* config)
 
 void mcachefs_set_current_config(struct mcachefs_config* config)
 {
-    check_dir_exists(config->backing);
+    check_dir_exists(config->cache);
     check_file_dir_exists(config->metafile);
     check_file_dir_exists(config->journal);
-    
+
+    config->verbose = DEFAULT_VERBOSE;    
     config->log_fd = stderr;
 
     int threadtype;
@@ -154,14 +157,14 @@ const char* mcachefs_config_mountpoint()
     return current_config->mountpoint;
 }
 
-const char* mcachefs_config_target()
+const char* mcachefs_config_source()
 { 
-    return current_config->target;
+    return current_config->source;
 }
 
-const char* mcachefs_config_backing()
+const char* mcachefs_config_cache()
 {
-    return current_config->backing;
+    return current_config->cache;
 }
 
 const char* mcachefs_config_metafile()
@@ -172,24 +175,6 @@ const char* mcachefs_config_metafile()
 const char* mcachefs_config_journal()
 {
     return current_config->journal;
-}
-
-int mcachefs_config_verbose()
-{
-    if ( current_config == NULL )
-    {
-        return 100;
-    }
-    return current_config->verbose;
-}
-
-FILE* mcachefs_config_log_fd()
-{
-    if ( current_config == NULL )
-    {
-        return stderr;
-    }
-    return current_config->log_fd;
 }
 
 int mcachefs_config_transfer_threads_nb(int type)

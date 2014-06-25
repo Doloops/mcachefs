@@ -364,7 +364,7 @@ mcachefs_file_getfd_mode (struct mcachefs_file_t *mfile, int real, int flags,
         fd = mcachefs_file_do_open (mfile, flags, mode,
                                     &(mfile->
                                       sources[MCACHEFS_FILE_SOURCE_REAL]),
-                                    &mcachefs_makerealpath);
+                                    &mcachefs_makepath_source);
         if (fd < 0)
         {
           /**
@@ -387,7 +387,7 @@ mcachefs_file_getfd_mode (struct mcachefs_file_t *mfile, int real, int flags,
                                             &(mfile->
                                               sources
                                               [MCACHEFS_FILE_SOURCE_REAL]),
-                                            &mcachefs_makerealpath);
+                                            &mcachefs_makepath_source);
             }
             else
             {
@@ -412,7 +412,7 @@ mcachefs_file_getfd_mode (struct mcachefs_file_t *mfile, int real, int flags,
         fd = mcachefs_file_do_open (mfile, flags, mode,
                                     &(mfile->
                                       sources[MCACHEFS_FILE_SOURCE_BACKING]),
-                                    &mcachefs_makebackingpath);
+                                    &mcachefs_makepath_cache);
     }
     return fd;
 }

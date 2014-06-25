@@ -432,10 +432,10 @@ mcachefs_journal_apply_entry (struct mcachefs_journal_entry_t *entry,
          (long) entry->uid, (long) entry->gid, (unsigned long) entry->size,
          entry->utimbuf.actime, entry->utimbuf.modtime);
 
-    char *realpath = mcachefs_makerealpath (path);
+    char *realpath = mcachefs_makepath_source (path);
     char *realto = NULL;
     if (to)
-        realto = mcachefs_makerealpath (to);
+        realto = mcachefs_makepath_source (to);
 
     Log ("Operating on real_path='%s'\n", realpath);
     switch (entry->op)

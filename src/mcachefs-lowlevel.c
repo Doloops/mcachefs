@@ -99,7 +99,7 @@ mcachefs_readlink (const char *path, char *buf, size_t size)
     }
     mcachefs_metadata_release (mdata);
 
-    backingpath = mcachefs_makebackingpath (path);
+    backingpath = mcachefs_makepath_cache (path);
     if (!backingpath)
         return -ENOMEM;
 
@@ -110,11 +110,11 @@ mcachefs_readlink (const char *path, char *buf, size_t size)
     }
 
     Err ("Could not read from backing...\n");
-    realpath = mcachefs_makerealpath (path);
+    realpath = mcachefs_makepath_source (path);
 
     if ((res = readlink (realpath, buf, size)) != -1)
     {
-        if (mcachefs_createbackingpath (path, 0))
+        if (mcachefs_createpath_cache (path, 0))
         {
             Err ("Could not create new backing path '%s'\n", backingpath);
         }
@@ -149,16 +149,16 @@ mcachefs_symlink (const char *path, const char *to)
         return -res;
     }
 
-    if ((res = mcachefs_createbackingpath (to, 0)) != 0)
+    if ((res = mcachefs_createpath_cache (to, 0)) != 0)
     {
         Err ("Could not create backing path '%s' : err=%d:%s\n", to, -res,
              strerror (-res));
         return res;
     }
 
-    backingto = mcachefs_makebackingpath (to);
+    backingto = mcachefs_makepath_cache (to);
 
-    if (mcachefs_createbackingpath (to, 0))
+    if (mcachefs_createpath_cache (to, 0))
     {
         Err ("Could not create new backing path '%s'\n", backingto);
     }
@@ -250,9 +250,9 @@ mcachefs_unlink (const char *path)
         Err ("rmdir '%s' : err=%d:%s\n", path, res, strerror (-res));
         return res;
     }
-    if (mcachefs_fileinbacking (path))
+    if (mcachefs_fileincache (path))
     {
-        backingpath = mcachefs_makebackingpath (path);
+        backingpath = mcachefs_makepath_cache (path);
         if (unlink (backingpath))
         {
             Err ("Could not unlink backing path '%s' : err=%d:%s\n",
@@ -283,9 +283,9 @@ mcachefs_rmdir (const char *path)
     mcachefs_journal_append (mcachefs_journal_op_rmdir, path, NULL, 0, 0, 0,
                              0, 0, NULL);
 
-    if (mcachefs_fileinbacking (path))
+    if (mcachefs_fileincache (path))
     {
-        backingpath = mcachefs_makebackingpath (path);
+        backingpath = mcachefs_makepath_cache (path);
         if (rmdir (backingpath))
         {
             Err ("Could not rmdir backing path '%s' : err=%d:%s\n",
@@ -317,17 +317,17 @@ mcachefs_rename (const char *path, const char *to)
     mcachefs_journal_append (mcachefs_journal_op_rename, path, to, 0, 0, 0, 0,
                              0, NULL);
 
-    if (mcachefs_fileinbacking (path))
+    if (mcachefs_fileincache (path))
     {
-        backingpath = mcachefs_makebackingpath (path);
-        backingto = mcachefs_makebackingpath (to);
-        if (mcachefs_createbackingpath (to, 0))
+        backingpath = mcachefs_makepath_cache (path);
+        backingto = mcachefs_makepath_cache (to);
+        if (mcachefs_createpath_cache (to, 0))
         {
-            Err ("Could not create new backing path '%s'\n", backingto);
+            Err ("Could not create new cache path '%s'\n", backingto);
         }
         if (rename (backingpath, backingto))
         {
-            Err ("Could not rename backing path '%s' '%s' : err=%d:%s\n",
+            Err ("Could not rename cache path '%s' '%s' : err=%d:%s\n",
                  backingpath, backingto, errno, strerror (errno));
         }
         free (backingpath);
@@ -475,14 +475,14 @@ mcachefs_truncate (const char *path, off_t size)
     /*
      * Now shrink the temp file path if we need to
      */
-    if (mcachefs_fileinbacking (path))
+    if (mcachefs_fileincache (path))
     {
-        backingpath = mcachefs_makebackingpath (path);
+        backingpath = mcachefs_makepath_cache (path);
         if (!backingpath)
             return -ENOMEM;
         if (truncate (backingpath, size))
         {
-            Err ("Could not truncate backingpath '%s' for file '%s', err=%d:%s\n", backingpath, path, errno, strerror (errno));
+            Err ("Could not truncate cache path '%s' for file '%s', err=%d:%s\n", backingpath, path, errno, strerror (errno));
         }
         free (backingpath);
     }

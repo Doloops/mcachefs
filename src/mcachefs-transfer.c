@@ -42,9 +42,9 @@ void *mcachefs_transfer_thread (void *arg);
 int
 mcachefs_transfer_backfile (struct mcachefs_file_t *mfile)
 {
-  /**
-   * Called from mcachefs.c : mcachefs_fileid_get() with the mcachefs_file_lock held
-   */
+    /**
+     * Called from mcachefs.c : mcachefs_fileid_get() with the mcachefs_file_lock held
+     */
     mcachefs_file_lock_file (mfile);
 
     if (mfile->backing_status == MCACHEFS_FILE_BACKING_IN_PROGRESS)
@@ -54,7 +54,7 @@ mcachefs_transfer_backfile (struct mcachefs_file_t *mfile)
         return 0;
     }
 
-    if (mcachefs_fileinbacking (mfile->path))
+    if (mcachefs_fileincache (mfile->path))
     {
         mfile->backing_status = MCACHEFS_FILE_BACKING_DONE;
         Log ("Backing ok for file '%s' (status set to %d)\n", mfile->path,
@@ -84,7 +84,7 @@ mcachefs_transfer_writeback (const char *path)
 
     mcachefs_fh_t fh;
 
-    if (!mcachefs_fileinbacking (path))
+    if (!mcachefs_fileincache (path))
     {
         Err ("Will not sync '%s' : file not in backing !\n", path);
         return -EIO;
@@ -96,9 +96,10 @@ mcachefs_transfer_writeback (const char *path)
         Err ("Will not sync '%s' : could not find metadata !\n", path);
         return -ENOENT;
     }
-  /**
-   * This will increment usage, which will be decremented in mcachefs_do_write_back_file
-   */
+
+    /**
+     * This will increment usage, which will be decremented in mcachefs_do_write_back_file
+     */
     fh = mcachefs_fileid_get (mdata, path, mcachefs_file_type_file);
 
     mcachefs_metadata_release (mdata);
@@ -470,7 +471,7 @@ mcachefs_transfer_do_backing (struct mcachefs_file_t *mfile)
     mcachefs_file_unlock_file (mfile);
 
     Err ("Could not backup that file !\n");
-    backingpath = mcachefs_makebackingpath (mfile->path);
+    backingpath = mcachefs_makepath_cache (mfile->path);
     if (!backingpath)
     {
         Err ("OOM : Could not allocate backing path.\n");
@@ -494,7 +495,7 @@ mcachefs_transfer_do_writeback (struct mcachefs_file_t *mfile,
     struct stat realstat;
     char *realpath;
 
-    realpath = mcachefs_makerealpath (mfile->path);
+    realpath = mcachefs_makepath_source (mfile->path);
     if (!realpath)
         Bug ("OOM.\n");
     if (stat (realpath, &realstat) == 0)
@@ -749,7 +750,8 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
 
     gettimeofday (&now, NULL);
     interval = TIME_DIFF (now, begin_copy);
-    Info ("End of transfer (%s) for '%s' : %ld usec, copied '%lu', rate=%lu kb/sec\n", tobacking ? "backing" : "real", mfile->path, interval, (unsigned long) size, (unsigned long) ((size * 1000) / interval));
+    Info ("End of transfer (to %s) for '%s' : %ld usec, copied '%lu', rate=%lu kb/sec\n", tobacking ? "cache" : "source", 
+           mfile->path, interval, (unsigned long) size, (unsigned long) ((size * 1000) / interval));
 
     mcachefs_file_putfd (mfile, MCACHEFS_FILE_SOURCE_REAL);
     mcachefs_file_putfd (mfile, MCACHEFS_FILE_SOURCE_BACKING);

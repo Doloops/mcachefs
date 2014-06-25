@@ -4,10 +4,12 @@
  Metadata functions
  **********************************************************************/
 
-#if 1
+#if 0
 #define Log_M Log
 #else
 #define Log_M(...)
+#undef Log
+#define Log(...) do{} while(0)
 #endif
 
 #define MCACHEFS_METADATA_MAX_LEVELS 1024
@@ -53,9 +55,9 @@ mcachefs_metadata_format ()
     strcpy (mdata.d_name, "/");
     mdata.hash = doHash ("/");
 
-    if (stat (mcachefs_config_target(), &(mdata.st)))
+    if (stat (mcachefs_config_source(), &(mdata.st)))
     {
-        Err ("Could not stat target : '%s'\n", mcachefs_config_target());
+        Err ("Could not stat source : '%s'\n", mcachefs_config_source());
         exit (-1);
     }
     mdata.st.st_ino = 0;
@@ -752,7 +754,7 @@ mcachefs_metadata_recurse_open (struct mcachefs_metadata_t *father)
 
     if (!father->father)
     {
-        return open (mcachefs_config_target(), O_RDONLY);
+        return open (mcachefs_config_source(), O_RDONLY);
     }
     fd = mcachefs_metadata_recurse_open (mcachefs_metadata_get
                                          (father->father));
@@ -788,7 +790,7 @@ mcachefs_metadata_get_child (struct mcachefs_metadata_t *father)
     }
     else if (father->child)
     {
-        Log ("Explicit child.\n");
+        Log ("Father %s has an explicit child %llu\n", father->d_name, father->child);
         return mcachefs_metadata_get (father->child);
     }
 

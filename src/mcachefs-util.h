@@ -19,23 +19,26 @@ hash_t doHash (const char *str);
 hash_t doHashPartial (const char *str, int sz);
 
 char *mcachefs_makepath (const char *path, const char *prefix);
-char *mcachefs_makerealpath (const char *path);
-char *mcachefs_makebackingpath (const char *path);
+char *mcachefs_makepath_source (const char *path);
+char *mcachefs_makepath_cache (const char *path);
 
-char *mcachefs_makemetadatapath (const char *path);
 int mcachefs_createpath (const char *prefix, const char *path, int lastIsDir);
 
 /**
  * Create the backing path
  */
-int mcachefs_createbackingpath (const char *path, int lastIsDir);
+int mcachefs_createpath_cache (const char *path, int lastIsDir);
 
 /**
  * Create the backing file
  */
 int mcachefs_backing_createbackingfile (const char *path, mode_t mode);
 
-int mcachefs_fileinbacking (const char *path);
+/**
+ * Checks if the file is in cache
+ * Returns 0 if not in cache, non-zero if in cache
+ */
+int mcachefs_fileincache (const char *path);
 
 char *mcachefs_split_path (const char *path, const char **lname);
 

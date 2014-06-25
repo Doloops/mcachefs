@@ -7,6 +7,8 @@
 
 #include "mcachefs.h"
 
+static const int WAIT_CACHE_INTERVAL = 5 * 1000 * 1000;
+
 int
 mcachefs_open_mfile (struct mcachefs_file_t *mfile,
                      struct fuse_file_info *info, mcachefs_file_type_t type)
@@ -27,7 +29,7 @@ mcachefs_open_mfile (struct mcachefs_file_t *mfile,
                  mfile->path, mcachefs_getstate ());
             if (mfile->backing_status == MCACHEFS_FILE_BACKING_ASKED)
             {
-                if (mcachefs_fileinbacking (mfile->path))
+                if (mcachefs_fileincache (mfile->path))
                 {
                     mfile->backing_status = MCACHEFS_FILE_BACKING_DONE;
                 }
@@ -109,7 +111,7 @@ mcachefs_read_wait_accessible (struct mcachefs_file_t *mfile, size_t size,
         }
         mcachefs_file_unlock_file (mfile);
         read_wait_time.tv_sec = 0;
-        read_wait_time.tv_nsec = 500000000;
+        read_wait_time.tv_nsec = WAIT_CACHE_INTERVAL;
         nanosleep (&read_wait_time, NULL);
         Info ("Waiting for end of backing for file '%s', offset=%luk, size=%luk, end of segment=%luk\n", mfile->path, (unsigned long) offset >> 10, (unsigned long) size >> 10, (unsigned long) (offset + (off_t) size) >> 10);
         mcachefs_file_lock_file (mfile);
@@ -293,10 +295,10 @@ mcachefs_write_file (struct mcachefs_file_t *mfile, const char *buf,
     mcachefs_file_lock_file (mfile);
     if (!mfile->dirty)
     {
-      /**
-       * We have to append the fsync command on the journal
-       * Do it with no lock on the file to prevent deadlocks
-       */
+        /**
+         * We have to append the fsync command on the journal
+         * Do it with no lock on the file to prevent deadlocks
+         */
         mfile->dirty = 1;
         mcachefs_file_unlock_file (mfile);
         mcachefs_journal_append (mcachefs_journal_op_fsync, mfile->path, NULL,

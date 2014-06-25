@@ -1,5 +1,7 @@
 #include "mcachefs.h"
 
+#include <libgen.h>
+
 /**********************************************************************
  Utility functions
 **********************************************************************/
@@ -82,31 +84,141 @@ mcachefs_makepath (const char *path, const char *prefix)
 }
 
 char *
-mcachefs_makerealpath (const char *path)
+mcachefs_makepath_source (const char *path)
 {
-    return mcachefs_makepath (path, mcachefs_config_target());
+    return mcachefs_makepath (path, mcachefs_config_source());
 }
 
 char *
-mcachefs_makebackingpath (const char *path)
+mcachefs_makepath_cache (const char *path)
 {
-    return mcachefs_makepath (path, mcachefs_config_backing());
+    return mcachefs_makepath (path, mcachefs_config_cache());
+}
+
+const char* __basename(const char* path)
+{
+    const char* bname = path;
+    const char *cur;
+    for ( cur = path ; *cur != '\0'; cur++ )
+    {
+        if ( *cur == '/' )
+        {
+            bname = cur;
+            bname++;
+        }
+    }
+    return bname;
 }
 
 int
-mcachefs_fileinbacking (const char *path)
+mcachefs_fileincache (const char *path)
 {
-    char *backingpath;
+    char *cachepath;
     struct stat st;
     int res;
 
-    backingpath = mcachefs_makebackingpath (path);
-    res = lstat (backingpath, &st);
-    free (backingpath);
+    cachepath = mcachefs_makepath_cache (path);
+    res = lstat (cachepath, &st);
+    free (cachepath);
     return res == 0;
 }
 
+int
+mcachefs_createpath (const char *prefix, const char *cpath, int lastIsDir)
+{
+    int prefixfd, tempfd, res;
+    struct stat sb;    
 
+    Log ("createpath(prefix=%s, cpath=%s, lastIsDir=%d)\n", prefix, cpath, lastIsDir);
+
+    if ( cpath[0] == '/' )
+    {
+        cpath++;
+    }
+    
+    if ( cpath[0] == '\0' )
+    {
+        Log ("At root, ok\n");
+        return 0;
+    }
+    
+    char* path = strdup(cpath), *parentname;
+  
+    if (path == NULL)
+    {
+        return -ENOMEM;
+    }
+    
+    if ( !lastIsDir )
+    {
+        path = dirname(path);
+        Log ( "not lastIsDir, considering path=%s\n", path);
+    }
+    
+    if ( strncmp(path, "/", 2) == 0 )
+    {
+        Log ("At root (for file %s), ok\n", cpath);
+        free(path);
+        return 0;
+    }
+
+    prefixfd = open (prefix, O_RDONLY);
+
+    if (prefixfd == -1)
+    {
+        Err ("Could not get prefix '%s' : error %d:%s\n", prefix, errno,
+             strerror (errno));
+        free(path);
+        return -errno;
+    }
+
+    if ( fstatat(prefixfd, path, &sb, 0) == 0 )
+    {
+        free(path);
+        close(prefixfd);
+        return 0;
+    }
+    else
+    {
+        const char* cname;
+        cname = __basename(path);
+        parentname = dirname(path);
+        Log("cname=%s, parentname=%s\n", cname, parentname);
+        
+        res = mcachefs_createpath(prefix, parentname, 1);
+        if ( res != 0 )
+        {
+            Err("Could not create parent (prefix=%s, parentname=%s)\n", prefix, parentname);
+            free(path);
+            close(prefixfd);
+            return res;
+        }
+        tempfd = openat(prefixfd, parentname, O_RDONLY);
+        if ( tempfd == -1 )
+        {
+            free(path);
+            close(prefixfd);
+            return -1;
+        }
+        Log ("Opened prefixfd=%d, parentname=%s, tempfd=%d\n", prefixfd, parentname, tempfd);
+        if (mkdirat (tempfd, cname, S_IRWXU) != 0)
+        {
+            Err ("Could not mkdirat(tempfd=%d, cname=%s) : err=%d:%s\n", tempfd, cname, errno,
+                 strerror (errno));
+            free(path);
+            close(prefixfd);
+            close(tempfd);
+            return -1;
+        }      
+        Log("created new path for (prefix=%s, cpath=%s)\n", prefix, cpath);
+    }
+    free(path);
+    close(prefixfd);
+    close(tempfd);
+    return 0;
+}
+
+#if 0
 int
 mcachefs_createpath (const char *prefix, const char *path, int lastIsDir)
 {
@@ -172,13 +284,14 @@ mcachefs_createpath (const char *prefix, const char *path, int lastIsDir)
     Log ("Done.\n");
     return 0;
 }
+#endif
 
 int
-mcachefs_createbackingpath (const char *path, int lastIsDir)
+mcachefs_createpath_cache (const char *path, int lastIsDir)
 {
     /* Does the path in the backing store exist? */
-    Log ("Creating backing path for '%s'\n", path);
-    return mcachefs_createpath (mcachefs_config_backing(), path, lastIsDir);
+    Log ("Creating cache path for '%s'\n", path);
+    return mcachefs_createpath (mcachefs_config_cache(), path, lastIsDir);
 }
 
 int
@@ -187,11 +300,11 @@ mcachefs_backing_createbackingfile (const char *path, mode_t mode)
     int res;
     struct stat st;
 
-    res = mcachefs_createbackingpath (path, 0);
+    res = mcachefs_createpath_cache (path, 0);
     if (res)
         return res;
 
-    char *backing_path = mcachefs_makebackingpath (path);
+    char *backing_path = mcachefs_makepath_cache (path);
 
     if (lstat (backing_path, &st) == 0 && S_ISREG (st.st_mode))
     {
