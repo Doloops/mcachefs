@@ -3,7 +3,7 @@
 
 #define __MCACHEFS_VERSION__ "0.5.30"
 
-#define FUSE_USE_VERSION 26
+#define FUSE_USE_VERSION 29
 #define _BSD_SOURCE
 #ifdef linux
 /* For pread()/pwrite() */
