@@ -1,3 +1,4 @@
+#if 0
 /* 
  * A config file parser. Copyright (c) Michael Still (mikal@stillhq.com) 2004, 
  * released under the terms of the GNU GPL version 2 
@@ -47,4 +48,5 @@ struct config_list *config_parse (char *);
 void config_close (config_state *);
 void config_tokenizeline (struct config_list *);
 
+#endif
 #endif

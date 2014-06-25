@@ -14,6 +14,7 @@
 #include "mcachefs.h"
 #include "config.h"
 
+#if 0
 char *mcachefs_mountpoint = NULL;
 char *mcachefs_target = NULL;
 char *mcachefs_backing = NULL;
@@ -21,11 +22,9 @@ char *mcachefs_metadir = NULL;
 char *mcachefs_metafile = NULL;
 char *mcachefs_journal = NULL;
 
-int mcachefs_verbose = 0;
 int mcachefs_transfer_default_threads_nb = 1;
 
 FILE *mcachefs_log_fd = NULL;
-
 
 #ifndef __MCACHEFS_USES_SYSLOG
 void
@@ -71,14 +70,27 @@ config_getnbthreads (config_state * cfg, const char *mountpoint,
     else
         return ival;
 }
+#endif
 
 int
 main (int argc, char *argv[])
 {
+    struct mcachefs_config* config;
+    struct mcachefs_metadata_t *mdata_root;
+
+    printf ("mcachefs " __MCACHEFS_VERSION__ " starting up...\n");
+
+    
+    config = mcachefs_parse_config(argc, argv);
+    
+    mcachefs_dump_config(config);
+    
+    mcachefs_set_current_config(config);
+
+#if 0
     config_state *cfg;
     char *key, *val;
     int keylen;
-    struct mcachefs_metadata_t *mdata_root;
 
     /*
      * Default values
@@ -86,7 +98,6 @@ main (int argc, char *argv[])
 
     mcachefs_log_fd = stderr;
 
-    printf ("mcachefs " __MCACHEFS_VERSION__ " starting up...\n");
 
     if (argc == 1 || argv[1][0] == '-')
     {
@@ -174,7 +185,9 @@ main (int argc, char *argv[])
     val = config_getstring (cfg, key);
     if (val)
         mcachefs_verbose = atoi (val);
+#endif
 
+#if 0
     mcachefs_transfer_default_threads_nb =
         config_getnbthreads (cfg, mcachefs_mountpoint, "threads");
     mcachefs_transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP] =
@@ -198,6 +211,7 @@ main (int argc, char *argv[])
           [MCACHEFS_TRANSFER_TYPE_WRITEBACK]);
     Info ("    metadata  : %d\n",
           mcachefs_transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]);
+#endif
 
     mcachefs_file_timeslice_init_variables ();
 
@@ -223,7 +237,9 @@ main (int argc, char *argv[])
 #endif
 
     void *user_data = NULL;
-    fuse_main (argc, argv, &mcachefs_oper, user_data);
+    int fuse_argc = argc -1;
+    char** fuse_argv = argv + 1;
+    fuse_main (fuse_argc, fuse_argv, &mcachefs_oper, user_data);
 
     Info ("Serving finished !\n");
     return 0;

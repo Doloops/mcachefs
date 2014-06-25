@@ -64,6 +64,7 @@ typedef unsigned long long int hash_t;
 typedef unsigned long long mcachefs_fh_t;
 typedef unsigned long long mcachefs_metadata_id;
 
+#include "mcachefs-config.h"
 #include "mcachefs-mutex.h"
 #include "mcachefs-file.h"
 #include "mcachefs-metadata.h"
@@ -74,6 +75,7 @@ typedef unsigned long long mcachefs_metadata_id;
 #include "mcachefs-log.h"
 #include "mcachefs-io.h"
 
+#if 0
 /**
  * Common variables
  */
@@ -83,6 +85,7 @@ extern char *mcachefs_backing;
 extern char *mcachefs_metadir;
 extern char *mcachefs_metafile;
 extern char *mcachefs_journal;
+#endif
 
 extern struct fuse_operations mcachefs_oper;
 

@@ -1,3 +1,4 @@
+#if 0
 /* 
  * A config file parser. Copyright (c) Michael Still (mikal@stillhq.com) 2004, 
  * released under the terms of the GNU GPL version 2 
@@ -220,3 +221,5 @@ config_getstring (config_state * cfg, char *key)
 
     return NULL;
 }
+
+#endif

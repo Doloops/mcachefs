@@ -14,9 +14,8 @@ struct mcachefs_transfer_thread_t
 };
 
 static struct mcachefs_transfer_thread_t *mcachefs_transfer_threads;
-int mcachefs_transfer_threads_nb = 0;
 
-int mcachefs_transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPES];
+int mcachefs_transfer_threads_nb = 0;
 
 struct mcachefs_transfer_queue_t
 {
@@ -128,7 +127,7 @@ mcachefs_transfer_start_threads ()
     for (type = 0; type < MCACHEFS_TRANSFER_TYPES; type++)
     {
         mcachefs_transfer_threads_nb +=
-            mcachefs_transfer_threads_type_nb[type];
+            mcachefs_config_transfer_threads_nb(type);
     }
 
     Info ("Total threads : %d\n", mcachefs_transfer_threads_nb);
@@ -154,7 +153,7 @@ mcachefs_transfer_start_threads ()
     cur = 0;
     for (type = 0; type < MCACHEFS_TRANSFER_TYPES; type++)
     {
-        for (curt = 0; curt < mcachefs_transfer_threads_type_nb[type]; curt++)
+        for (curt = 0; curt < mcachefs_config_transfer_threads_nb(type); curt++)
         {
             mcachefs_transfer_threads[cur].type = type;
             pthread_create (&thid, &attrs, mcachefs_transfer_thread,

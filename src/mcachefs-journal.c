@@ -34,7 +34,7 @@ mcachefs_journal_init ()
 {
     struct stat st;
     mcachefs_journal_fsync_path =
-        mcachefs_makepath (".fsync", mcachefs_journal);
+        mcachefs_makepath (".fsync", mcachefs_config_journal());
 
     if (mcachefs_journal_fsync_path == NULL)
         Bug ("OOM.\n");
@@ -170,7 +170,7 @@ mcachefs_journal_append (mcachefs_journal_op op, const char *path,
 
     if (op == mcachefs_journal_op_rename)
     {
-        res = stat (mcachefs_journal, &journal_stat);
+        res = stat (mcachefs_config_journal(), &journal_stat);
         if (res == 0 && journal_stat.st_size)
         {
             Log ("Journal : rename() : rebuild all journal !\n");
@@ -185,11 +185,11 @@ mcachefs_journal_append (mcachefs_journal_op op, const char *path,
         }
     }
 
-    fd = open (mcachefs_journal, O_RDWR | O_CREAT | O_APPEND, 0644);
+    fd = open (mcachefs_config_journal(), O_RDWR | O_CREAT | O_APPEND, 0644);
 
     if (fd == -1)
     {
-        Err ("Could not open journal '%s' : err=%d:%s\n", mcachefs_journal,
+        Err ("Could not open journal '%s' : err=%d:%s\n", mcachefs_config_journal(),
              errno, strerror (errno));
         exit (-1);
     }
@@ -226,18 +226,18 @@ mcachefs_journal_rebuild (const char *rename_path, const char *rename_to)
     memcpy (altered_path, rename_to, rename_to_sz);
     altered_path_suffix = &(altered_path[rename_to_sz]);
 
-    fd_src = open (mcachefs_journal, O_RDONLY);
+    fd_src = open (mcachefs_config_journal(), O_RDONLY);
     if (fd_src == -1)
     {
         Err ("REBUILD : Could not open source journal '%s'\n",
-             mcachefs_journal);
+             mcachefs_config_journal());
         return -errno;
     }
 
     journal_tgt =
-        (char *) malloc (strlen (mcachefs_journal) +
+        (char *) malloc (strlen (mcachefs_config_journal()) +
                          strlen (mcachefs_journal_suffix) + 1);
-    strcpy (journal_tgt, mcachefs_journal);
+    strcpy (journal_tgt, mcachefs_config_journal());
     strcat (journal_tgt, mcachefs_journal_suffix);
 
     fd_tgt = open (journal_tgt, O_RDWR | O_CREAT | O_TRUNC, 0644);
@@ -359,14 +359,14 @@ mcachefs_journal_rebuild (const char *rename_path, const char *rename_to)
     close (fd_src);
     close (fd_tgt);
 
-    if (unlink (mcachefs_journal))
+    if (unlink (mcachefs_config_journal()))
     {
         Err ("Could not unlink : err=%d:%s\n", errno, strerror (errno));
     }
-    if (rename (journal_tgt, mcachefs_journal))
+    if (rename (journal_tgt, mcachefs_config_journal()))
     {
         Err ("Could not rename %s to %s : err=%d:%s\n", journal_tgt,
-             mcachefs_journal, errno, strerror (errno));
+             mcachefs_config_journal(), errno, strerror (errno));
         res = -errno;
     }
 
@@ -383,7 +383,7 @@ mcachefs_journal_was_renamed (const char *newpath)
     struct mcachefs_journal_entry_t entry;
 
     mcachefs_journal_lock ();
-    fd = open (mcachefs_journal, O_RDONLY);
+    fd = open (mcachefs_config_journal(), O_RDONLY);
 
     if (fd < 0)
     {
@@ -557,7 +557,7 @@ mcachefs_journal_apply_updates (const char *journal)
 
     if (fd == -1)
     {
-        Err ("Could not read journal '%s' : err=%d:%s\n", mcachefs_journal,
+        Err ("Could not read journal '%s' : err=%d:%s\n", mcachefs_config_journal(),
              errno, strerror (errno));
         return -EIO;
     }
@@ -599,7 +599,7 @@ mcachefs_journal_apply_fsync (const char *journal)
 
     if (fd == -1)
     {
-        Err ("Could not read journal '%s' : err=%d:%s\n", mcachefs_journal,
+        Err ("Could not read journal '%s' : err=%d:%s\n", mcachefs_config_journal(),
              errno, strerror (errno));
         return -EIO;
     }
@@ -671,7 +671,7 @@ mcachefs_journal_apply ()
   /**
    * First, apply non-fsync modifications
    */
-    if (mcachefs_journal_apply_updates (mcachefs_journal))
+    if (mcachefs_journal_apply_updates (mcachefs_config_journal()))
     {
         Err ("Could not apply updates !\n");
         mcachefs_journal_unlock ();
@@ -685,10 +685,10 @@ mcachefs_journal_apply ()
     /*
      * Now fsync openned files
      */
-    res = rename (mcachefs_journal, mcachefs_journal_fsync_path);
+    res = rename (mcachefs_config_journal(), mcachefs_journal_fsync_path);
     if (res == -1)
     {
-        Bug ("Could not rename '%s' to '%s' : err=%d:%s\n", mcachefs_journal,
+        Bug ("Could not rename '%s' to '%s' : err=%d:%s\n", mcachefs_config_journal(),
              mcachefs_journal_fsync_path, errno, strerror (errno));
     }
 
@@ -750,7 +750,7 @@ mcachefs_journal_drop ()
 {
     mcachefs_journal_lock ();
 
-    if (truncate (mcachefs_journal, 0))
+    if (truncate (mcachefs_config_journal(), 0))
     {
         Err ("Could not ftruncate journal : err=%d:%s\n", errno,
              strerror (errno));
@@ -775,11 +775,11 @@ mcachefs_journal_dump (struct mcachefs_file_t *mvops)
 
     Log ("\tJournal mutex lock... OK.\n");
 
-    fd = open (mcachefs_journal, O_RDONLY);
+    fd = open (mcachefs_config_journal(), O_RDONLY);
 
     if (fd == -1)
     {
-        Err ("Could not read journal '%s' : err=%d:%s\n", mcachefs_journal,
+        Err ("Could not read journal '%s' : err=%d:%s\n", mcachefs_config_journal(),
              errno, strerror (errno));
         mcachefs_journal_unlock ();
         Log ("\tJournal mutex unlock... OK.\n");

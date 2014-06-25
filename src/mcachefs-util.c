@@ -84,13 +84,13 @@ mcachefs_makepath (const char *path, const char *prefix)
 char *
 mcachefs_makerealpath (const char *path)
 {
-    return mcachefs_makepath (path, mcachefs_target);
+    return mcachefs_makepath (path, mcachefs_config_target());
 }
 
 char *
 mcachefs_makebackingpath (const char *path)
 {
-    return mcachefs_makepath (path, mcachefs_backing);
+    return mcachefs_makepath (path, mcachefs_config_backing());
 }
 
 int
@@ -178,7 +178,7 @@ mcachefs_createbackingpath (const char *path, int lastIsDir)
 {
     /* Does the path in the backing store exist? */
     Log ("Creating backing path for '%s'\n", path);
-    return mcachefs_createpath (mcachefs_backing, path, lastIsDir);
+    return mcachefs_createpath (mcachefs_config_backing(), path, lastIsDir);
 }
 
 int

@@ -202,11 +202,11 @@ mcachefs_cleanup_backing (struct mcachefs_file_t *mvops, int simulate)
 
     Info ("Building backing list : prefix='%s', age=%d\n", prefix, max_age);
 
-    backingfd = open (mcachefs_backing, O_RDONLY);
+    backingfd = open (mcachefs_config_backing(), O_RDONLY);
 
     if (backingfd < 0)
     {
-        Err ("Could not open '%s'\n", mcachefs_backing);
+        Err ("Could not open '%s'\n", mcachefs_config_backing());
         return;
     }
 

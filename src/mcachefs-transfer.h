@@ -24,19 +24,6 @@ extern sem_t mcachefs_backing_sem;
 #define MCACHEFS_TRANSFER_THREADS_MAX_NUMBER 64
 
 /**
- * Types of transfer set
- */
-#define MCACHEFS_TRANSFER_TYPES 3
-#define MCACHEFS_TRANSFER_TYPE_BACKUP    0
-#define MCACHEFS_TRANSFER_TYPE_WRITEBACK 1
-#define MCACHEFS_TRANSFER_TYPE_METADATA  2
-
-/**
- * Number of threads per type
- */
-extern int mcachefs_transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPES];
-
-/**
  * Transfer backing frontend
  * Call for file backup. If the backup exists and is fresh enough, do nothing, otherwise wakeup the backingthread.
  */

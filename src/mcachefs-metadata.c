@@ -53,9 +53,9 @@ mcachefs_metadata_format ()
     strcpy (mdata.d_name, "/");
     mdata.hash = doHash ("/");
 
-    if (stat (mcachefs_target, &(mdata.st)))
+    if (stat (mcachefs_config_target(), &(mdata.st)))
     {
-        Err ("Could not stat target : '%s'\n", mcachefs_target);
+        Err ("Could not stat target : '%s'\n", mcachefs_config_target());
         exit (-1);
     }
     mdata.st.st_ino = 0;
@@ -85,21 +85,21 @@ mcachefs_metadata_open ()
 {
     struct stat st;
 
-    if (stat (mcachefs_metafile, &st) == 0 && st.st_size)
+    if (stat (mcachefs_config_metafile(), &st) == 0 && st.st_size)
     {
-        mcachefs_metadata_fd = open (mcachefs_metafile, O_RDWR);
+        mcachefs_metadata_fd = open (mcachefs_config_metafile(), O_RDWR);
         if (mcachefs_metadata_fd == -1)
         {
-            Err ("Could not open '%s' : err=%d:%s\n", mcachefs_metafile,
+            Err ("Could not open '%s' : err=%d:%s\n", mcachefs_config_metafile(),
                  errno, strerror (errno));
         }
-        Log ("Openned metafile '%s' at fd=%d\n", mcachefs_metafile,
+        Log ("Openned metafile '%s' at fd=%d\n", mcachefs_config_metafile(),
              mcachefs_metadata_fd);
         mcachefs_metadata_size = st.st_size;
     }
     else
     {
-        mcachefs_metadata_fd = open (mcachefs_metafile,
+        mcachefs_metadata_fd = open (mcachefs_config_metafile(),
                                      O_CREAT | O_TRUNC | O_RDWR,
                                      (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
                                       S_IROTH | S_IWOTH));
@@ -107,7 +107,7 @@ mcachefs_metadata_open ()
 
     if (mcachefs_metadata_fd == -1)
     {
-        Err ("Could not open metafile '%s'\n", mcachefs_metafile);
+        Err ("Could not open metafile '%s'\n", mcachefs_config_metafile());
         exit (-1);
     }
 
@@ -138,7 +138,7 @@ mcachefs_metadata_open ()
         Err ("Could not open metadata !\n");
         exit (-1);
     }
-    Log ("Openned metafile '%s'\n", mcachefs_metafile);
+    Log ("Openned metafile '%s'\n", mcachefs_config_metafile());
 
     mcachefs_metadata_reset_fh ();
 }
@@ -170,19 +170,19 @@ mcachefs_metadata_flush ()
     mcachefs_metadata_lock ();
     Info ("\tClosing metadata...\n");
     mcachefs_metadata_close ();
-    Info ("\tTruncating '%s'\n", mcachefs_metafile);
-    if (truncate (mcachefs_metafile, 0))
+    Info ("\tTruncating '%s'\n", mcachefs_config_metafile());
+    if (truncate (mcachefs_config_metafile(), 0))
     {
-        Err ("Could not truncate '%s' : %d:%s\n", mcachefs_metafile, errno,
+        Err ("Could not truncate '%s' : %d:%s\n", mcachefs_config_metafile(), errno,
              strerror (errno));
     }
-    Info ("\tUnlinking '%s'\n", mcachefs_metafile);
-    if (unlink (mcachefs_metafile))
+    Info ("\tUnlinking '%s'\n", mcachefs_config_metafile());
+    if (unlink (mcachefs_config_metafile()))
     {
-        Err ("Could not unlink '%s' : %d:%s\n", mcachefs_metafile, errno,
+        Err ("Could not unlink '%s' : %d:%s\n", mcachefs_config_metafile(), errno,
              strerror (errno));
     }
-    Info ("\tRe-openning '%s'\n", mcachefs_metafile);
+    Info ("\tRe-openning '%s'\n", mcachefs_config_metafile());
     mcachefs_metadata_open ();
     mcachefs_metadata_unlock ();
 }
@@ -270,7 +270,7 @@ mcachefs_metadata_extend ()
         Err ("Could not open metadata !\n");
         exit (-1);
     }
-    Log ("RE-Openned metafile '%s'\n", mcachefs_metafile);
+    Log ("RE-Openned metafile '%s'\n", mcachefs_config_metafile());
 
     head = (struct mcachefs_metadata_head_t *) mcachefs_metadata;
     head->first_free = first_free;
@@ -752,7 +752,7 @@ mcachefs_metadata_recurse_open (struct mcachefs_metadata_t *father)
 
     if (!father->father)
     {
-        return open (mcachefs_target, O_RDONLY);
+        return open (mcachefs_config_target(), O_RDONLY);
     }
     fd = mcachefs_metadata_recurse_open (mcachefs_metadata_get
                                          (father->father));
@@ -1501,9 +1501,9 @@ mcachefs_metadata_find_entry (const char *path)
 {
     struct mcachefs_metadata_t *metadata;
 
-    int mountpoint_sz = strlen (mcachefs_mountpoint);
+    int mountpoint_sz = strlen (mcachefs_config_mountpoint());
     int path_sz = 0;
-    if (strncmp (path, mcachefs_mountpoint, mountpoint_sz) == 0)
+    if (strncmp (path, mcachefs_config_mountpoint(), mountpoint_sz) == 0)
     {
         Log ("Find entry : mountpoint prefixed !\n");
         path = &(path[mountpoint_sz]);
