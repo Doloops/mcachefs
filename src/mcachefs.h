@@ -39,7 +39,7 @@
 
 /**
  * States of the backing mechanism
- */ 
+ */
 #define MCACHEFS_STATE_NORMAL   0
 #define MCACHEFS_STATE_FULL     1
 #define MCACHEFS_STATE_HANDSUP  2
@@ -77,7 +77,7 @@ typedef unsigned long long mcachefs_metadata_id;
 /**
  * Common variables
  */
-extern char* mcachefs_mountpoint;
+extern char *mcachefs_mountpoint;
 extern char *mcachefs_target;
 extern char *mcachefs_backing;
 extern char *mcachefs_metadir;
@@ -89,4 +89,3 @@ extern struct fuse_operations mcachefs_oper;
 extern struct stat mcachefs_target_stat;
 
 #endif // __FUSE_MCACHEFS_H
-

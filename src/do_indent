@@ -1,0 +1,1 @@
+indent -i4 -bli0 -nut *.c *.h

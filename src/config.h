@@ -13,10 +13,10 @@
  */
 struct config_list
 {
-  struct list_head list;
-  char *line;
-  char *key;
-  char *value;
+    struct list_head list;
+    char *line;
+    char *key;
+    char *value;
 };
 
 /*
@@ -24,27 +24,27 @@ struct config_list
  */
 typedef struct config_state_internal
 {
-  struct config_list *lines;
-  char *file;
-  off_t size;
+    struct config_list *lines;
+    char *file;
+    off_t size;
 }
-  config_state;
+config_state;
 
 /*
  * Externally used functions
  */
 
-config_state *config_open(char *);
+config_state *config_open (char *);
 
-char *config_getstring(config_state *, char *);
+char *config_getstring (config_state *, char *);
 
 /*
  * Internal helper functions
  */
 
-int config_file_open(char *, char *, int);
-struct config_list *config_parse(char *);
-void config_close(config_state *);
-void config_tokenizeline(struct config_list *);
+int config_file_open (char *, char *, int);
+struct config_list *config_parse (char *);
+void config_close (config_state *);
+void config_tokenizeline (struct config_list *);
 
 #endif

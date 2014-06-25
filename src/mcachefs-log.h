@@ -9,7 +9,7 @@
 #define MCACHEFSLOG_H_
 
 extern int mcachefs_verbose;
-extern FILE* mcachefs_log_fd;
+extern FILE *mcachefs_log_fd;
 
 // #define __MCACHEFS_USES_SYSLOG
 
