@@ -12,65 +12,6 @@
  */
 
 #include "mcachefs.h"
-#include "config.h"
-
-#if 0
-char *mcachefs_mountpoint = NULL;
-char *mcachefs_target = NULL;
-char *mcachefs_backing = NULL;
-char *mcachefs_metadir = NULL;
-char *mcachefs_metafile = NULL;
-char *mcachefs_journal = NULL;
-
-int mcachefs_transfer_default_threads_nb = 1;
-
-FILE *mcachefs_log_fd = NULL;
-
-#ifndef __MCACHEFS_USES_SYSLOG
-void
-setlogfile (const char *mountpoint)
-{
-    char log_file[PATH_MAX];
-    char *log_file_key, *c;
-
-    log_file_key = strdup (mountpoint);
-    for (c = log_file_key; *c; c++)
-        if (*c == '/')
-            *c = '_';
-
-    sprintf (log_file, "/var/log/mcachefs/mcachefs.log.%s", log_file_key);
-
-    mcachefs_log_fd = fopen (log_file, "w+");
-
-    if (mcachefs_log_fd == NULL)
-    {
-        fprintf (stderr, "Could not open log file '%s'\n", log_file);
-        exit (-1);
-    }
-}
-#endif
-
-int
-config_getnbthreads (config_state * cfg, const char *mountpoint,
-                     const char *value)
-{
-    static const int keylen = 4096;
-    char key[keylen];
-    char *val;
-    int ival;
-
-    snprintf (key, keylen, "%s/%s", mountpoint, value);
-    val = config_getstring (cfg, key);
-    if (val == NULL)
-        return mcachefs_transfer_default_threads_nb;
-    ival = atoi (val);
-
-    if (ival == 0 || ival >= MCACHEFS_TRANSFER_THREADS_MAX_NUMBER)
-        return mcachefs_transfer_default_threads_nb;
-    else
-        return ival;
-}
-#endif
 
 int
 main (int argc, char *argv[])
@@ -79,7 +20,6 @@ main (int argc, char *argv[])
     struct mcachefs_metadata_t *mdata_root;
 
     printf ("mcachefs " __MCACHEFS_VERSION__ " starting up...\n");
-
     
     config = mcachefs_parse_config(argc, argv);
     
@@ -87,131 +27,6 @@ main (int argc, char *argv[])
     
     mcachefs_set_current_config(config);
 
-#if 0
-    config_state *cfg;
-    char *key, *val;
-    int keylen;
-
-    /*
-     * Default values
-     */
-
-    mcachefs_log_fd = stderr;
-
-
-    if (argc == 1 || argv[1][0] == '-')
-    {
-        fprintf (stderr,
-                 "\tError : first argument shall be the the mcachefs_mountpoint !\n");
-        exit (2);
-    }
-
-    if (argc > 2 && strcmp (argv[1], "none") == 0)
-    {
-        mcachefs_mountpoint = argv[2];
-        argv[1] = argv[0];
-        argv++;
-        argc--;
-    }
-    else
-    {
-        mcachefs_mountpoint = argv[1];
-    }
-
-#ifdef __MCACHEFS_USES_SYSLOG
-    openlog ("mcachefs", LOG_CONS | LOG_PID, LOG_USER);
-    setlogmask (LOG_UPTO (LOG_INFO));
-#else
-    setlogfile (mcachefs_mountpoint);
-#endif
-
-    Info ("mcachefs " __MCACHEFS_VERSION__ " starting up...\n");
-
-    cfg = config_open ("mcachefs");
-    if (!cfg)
-    {
-        printf ("Couldn't open config file\n");
-        return 2;
-    }
-
-    keylen = strlen (argv[1]) + 256;
-    key = (char *) malloc (keylen);
-    if (!key)
-    {
-        perror ("Couldn't allocate memory for key value");
-        exit (2);
-    }
-
-    snprintf (key, keylen, "%s/target", mcachefs_mountpoint);
-    mcachefs_target = config_getstring (cfg, key);
-    if (!mcachefs_target)
-    {
-        fprintf (stderr, "No 'target' value for mount point '%s'\n",
-                 mcachefs_mountpoint);
-        exit (-1);
-    }
-
-    snprintf (key, keylen, "%s/backing", mcachefs_mountpoint);
-    mcachefs_backing = config_getstring (cfg, key);
-    if (!mcachefs_backing)
-    {
-        fprintf (stderr,
-                 "No 'backing' value for mount point '%s'\n",
-                 mcachefs_mountpoint);
-        exit (-1);
-    }
-
-    snprintf (key, keylen, "%s/metafile", mcachefs_mountpoint);
-    mcachefs_metafile = config_getstring (cfg, key);
-    if (!mcachefs_metafile)
-    {
-        fprintf (stderr,
-                 "No 'metafile' value for mount point '%s'\n",
-                 mcachefs_mountpoint);
-        exit (-1);
-    }
-
-    snprintf (key, keylen, "%s/journal", mcachefs_mountpoint);
-    mcachefs_journal = config_getstring (cfg, key);
-    if (!mcachefs_journal)
-    {
-        fprintf (stderr,
-                 "No 'journal' value for mount point '%s'\n",
-                 mcachefs_mountpoint);
-        exit (-1);
-    }
-
-    snprintf (key, keylen, "%s/verbose", mcachefs_mountpoint);
-    val = config_getstring (cfg, key);
-    if (val)
-        mcachefs_verbose = atoi (val);
-#endif
-
-#if 0
-    mcachefs_transfer_default_threads_nb =
-        config_getnbthreads (cfg, mcachefs_mountpoint, "threads");
-    mcachefs_transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP] =
-        config_getnbthreads (cfg, mcachefs_mountpoint, "backup_threads");
-    mcachefs_transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK] =
-        config_getnbthreads (cfg, mcachefs_mountpoint, "writeback_threads");
-    mcachefs_transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA] =
-        config_getnbthreads (cfg, mcachefs_mountpoint, "metadata_threads");
-
-    Info ("Configured with following settings :\n");
-    Info ("  target = %s\n", mcachefs_target);
-    Info ("  backing = %s\n", mcachefs_backing);
-    Info ("  metafile = %s\n", mcachefs_metafile);
-    Info ("  journal = %s\n", mcachefs_journal);
-    Info ("  verbosity = %d\n", mcachefs_verbose);
-    Info ("  threads :\n");
-    Info ("    backup    : %d\n",
-          mcachefs_transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]);
-    Info ("    writeback : %d\n",
-          mcachefs_transfer_threads_type_nb
-          [MCACHEFS_TRANSFER_TYPE_WRITEBACK]);
-    Info ("    metadata  : %d\n",
-          mcachefs_transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]);
-#endif
 
     mcachefs_file_timeslice_init_variables ();
 
