@@ -207,7 +207,7 @@ mcachefs_mknod(const char *path, mode_t mode, dev_t rdev)
         /*
          * Create entry in backup
          */
-        if ((res = mcachefs_backing_createbackingfile(path, mode)) != 0)
+        if ((res = mcachefs_createfile_cache(path, mode)) != 0)
         {
             Err(
                     "mknod : Making backing file for '%s' failed : err=%d:%s\n", path, -res, strerror (-res));
@@ -703,7 +703,7 @@ mcachefs_destroy(void *conn)
     (void) conn;
 
     Info("Waiting for mcachefs background threads to end...\n");
-    mcachefs_setstate(MCACHEFS_STATE_QUITTING);
+    mcachefs_config_set_read_state(MCACHEFS_STATE_QUITTING);
 
     mcachefs_file_stop_thread();
     mcachefs_transfer_stop_threads();

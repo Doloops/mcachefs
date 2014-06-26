@@ -27,13 +27,13 @@ mcachefs_makepath (const char *path, const char *prefix)
 char *
 mcachefs_makepath_source (const char *path)
 {
-    return mcachefs_makepath (path, mcachefs_config_source());
+    return mcachefs_makepath (path, mcachefs_config_get_source());
 }
 
 char *
 mcachefs_makepath_cache (const char *path)
 {
-    return mcachefs_makepath (path, mcachefs_config_cache());
+    return mcachefs_makepath (path, mcachefs_config_get_cache());
 }
 
 const char* __basename(const char* path)
@@ -164,11 +164,11 @@ mcachefs_createpath_cache (const char *path, int lastIsDir)
 {
     /* Does the path in the backing store exist? */
     Log ("Creating cache path for '%s'\n", path);
-    return mcachefs_createpath (mcachefs_config_cache(), path, lastIsDir);
+    return mcachefs_createpath (mcachefs_config_get_cache(), path, lastIsDir);
 }
 
 int
-mcachefs_backing_createbackingfile (const char *path, mode_t mode)
+mcachefs_createfile_cache (const char *path, mode_t mode)
 {
     int res;
     struct stat st;

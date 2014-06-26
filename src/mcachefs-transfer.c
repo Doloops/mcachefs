@@ -132,7 +132,7 @@ mcachefs_transfer_start_threads ()
     for (type = 0; type < MCACHEFS_TRANSFER_TYPES; type++)
     {
         mcachefs_transfer_threads_nb +=
-            mcachefs_config_transfer_threads_nb(type);
+            mcachefs_config_get_transfer_threads_nb(type);
     }
 
     Info ("Total threads : %d\n", mcachefs_transfer_threads_nb);
@@ -158,7 +158,7 @@ mcachefs_transfer_start_threads ()
     cur = 0;
     for (type = 0; type < MCACHEFS_TRANSFER_TYPES; type++)
     {
-        for (curt = 0; curt < mcachefs_config_transfer_threads_nb(type); curt++)
+        for (curt = 0; curt < mcachefs_config_get_transfer_threads_nb(type); curt++)
         {
             mcachefs_transfer_threads[cur].type = type;
             pthread_create (&thid, &attrs, mcachefs_transfer_thread,
@@ -178,7 +178,7 @@ mcachefs_transfer_stop_threads ()
     pthread_t thid;
     void *arg;
 
-    if (mcachefs_getstate () != MCACHEFS_STATE_QUITTING)
+    if (mcachefs_config_get_read_state () != MCACHEFS_STATE_QUITTING)
     {
         Bug ("Shall have set state to QUITTING !\n");
     }
@@ -238,7 +238,7 @@ mcachefs_transfer_thread (void *arg)
         sem_wait (&(mcachefs_transfer_sem[type]));
         Log ("Waking up transfer thread !\n");
 
-        if (mcachefs_getstate () == MCACHEFS_STATE_QUITTING)
+        if (mcachefs_config_get_read_state () == MCACHEFS_STATE_QUITTING)
         {
             Log ("Interrupting transfer thread %lx\n",
                  (unsigned long) pthread_self ());
@@ -403,7 +403,7 @@ mcachefs_transfer_do_transfer (struct mcachefs_file_t *mfile)
     struct mcachefs_metadata_t *mdata;
     struct utimbuf timbuf;
 
-    if (mcachefs_getstate () == MCACHEFS_STATE_HANDSUP)
+    if (mcachefs_config_get_read_state () == MCACHEFS_STATE_HANDSUP)
     {
         Err ("While backing file for '%s' : mcachefs state set to HANDSUP.\n",
              mfile->path);
@@ -454,7 +454,7 @@ void
 mcachefs_transfer_do_backing (struct mcachefs_file_t *mfile)
 {
     char *backingpath;
-    if (mcachefs_backing_createbackingfile (mfile->path, 0644))
+    if (mcachefs_createfile_cache (mfile->path, 0644))
     {
         Err ("Could not create backing path for '%s' !\n", mfile->path);
         return;
@@ -610,7 +610,7 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
 
     while (1)
     {
-        if (mcachefs_getstate () == MCACHEFS_STATE_QUITTING)
+        if (mcachefs_config_get_read_state () == MCACHEFS_STATE_QUITTING)
         {
             Err ("Interrupting transfer !\n");
             goto copyerr;
@@ -650,7 +650,7 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
                      strerror (errno));
                 goto copyerr;
             }
-            if (mcachefs_getstate () == MCACHEFS_STATE_QUITTING)
+            if (mcachefs_config_get_read_state () == MCACHEFS_STATE_QUITTING)
             {
                 Err ("Interrupting copy of '%s'\n", mfile->path);
                 goto copyerr;
@@ -665,7 +665,7 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
 
         }
 
-        if (mcachefs_getstate () == MCACHEFS_STATE_QUITTING)
+        if (mcachefs_config_get_read_state () == MCACHEFS_STATE_QUITTING)
         {
             Err ("Interrupting copy of '%s'\n", mfile->path);
             goto copyerr;
@@ -687,8 +687,8 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
 
         adjusted_rate = (global_rate + rate) / 2;
 
-        if (mcachefs_get_transfer_max_rate() && adjusted_rate
-            >= mcachefs_get_transfer_max_rate() )
+        if (mcachefs_config_get_transfer_max_rate() && adjusted_rate
+            >= mcachefs_config_get_transfer_max_rate() )
         {
           /**
            * rate = max kb/s
@@ -701,9 +701,9 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
             penalty.tv_sec = 0;
             Log ("window_size=%lu, max_rate=%lu\n",
                  (unsigned long) window_size,
-                 (unsigned long) mcachefs_get_transfer_max_rate ());
+                 (unsigned long) mcachefs_config_get_transfer_max_rate ());
             penalty.tv_nsec =
-                ((window_size << 20) / mcachefs_get_transfer_max_rate ());
+                ((window_size << 20) / mcachefs_config_get_transfer_max_rate ());
             Log ("penalty raw=%ldns, copy_interval=%ldns\n", penalty.tv_nsec,
                  (long) copy_interval << 10);
             if (penalty.tv_nsec > (copy_interval << 10))

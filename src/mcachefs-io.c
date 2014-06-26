@@ -21,7 +21,7 @@ mcachefs_open_mfile (struct mcachefs_file_t *mfile,
 #if 0
         info->direct_io = 1;
 #endif
-        if (mcachefs_getstate () != MCACHEFS_STATE_NOCACHE
+        if (mcachefs_config_get_read_state () != MCACHEFS_STATE_NOCACHE
             || __IS_WRITE (info->flags))
         {
             mcachefs_transfer_backfile (mfile);
@@ -29,7 +29,7 @@ mcachefs_open_mfile (struct mcachefs_file_t *mfile,
         else
         {
             Log ("MCachefs : skipping backup of file %s, state=%d\n",
-                 mfile->path, mcachefs_getstate ());
+                 mfile->path, mcachefs_config_get_read_state ());
             if (mfile->backing_status == MCACHEFS_FILE_BACKING_ASKED)
             {
                 if (mcachefs_fileincache (mfile->path))
@@ -89,7 +89,7 @@ mcachefs_read_wait_accessible (struct mcachefs_file_t *mfile, size_t size,
             use_real = 0;
             break;
         }
-        if (mcachefs_getstate () == MCACHEFS_STATE_NOCACHE)
+        if (mcachefs_config_get_read_state () == MCACHEFS_STATE_NOCACHE)
         {
             use_real = 1;
             break;
@@ -138,7 +138,7 @@ mcachefs_read_file (struct mcachefs_file_t *mfile, char *buf, size_t size,
 
     use_real = mcachefs_read_wait_accessible (mfile, size, offset);
 
-    if (use_real && mcachefs_getstate () == MCACHEFS_STATE_HANDSUP)
+    if (use_real && mcachefs_config_get_read_state () == MCACHEFS_STATE_HANDSUP)
     {
         Err ("While reading '%s' : mcachefs state set to HANDSUP.\n",
              mfile->path);

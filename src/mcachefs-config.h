@@ -55,6 +55,20 @@ struct mcachefs_config
      * The actual fuse arguments as passed to libfuse
      */
     struct fuse_args fuse_args;
+
+    int read_state;
+
+    int write_state;
+
+    int file_thread_interval;
+
+    int file_ttl;
+
+    off_t transfer_max_rate;
+
+    int cleanup_cache_age;
+
+    char* cleanup_cache_prefix;
 };
 
 struct mcachefs_config* mcachefs_parse_config(int argc, char* argv[]);
@@ -68,17 +82,17 @@ void mcachefs_set_current_config(struct mcachefs_config* config);
  */
 extern struct mcachefs_config* current_config;
 
-const char* mcachefs_config_mountpoint();
+const char* mcachefs_config_get_mountpoint();
 
-const char* mcachefs_config_source();
+const char* mcachefs_config_get_source();
 
-const char* mcachefs_config_cache();
+const char* mcachefs_config_get_cache();
 
-const char* mcachefs_config_metafile();
+const char* mcachefs_config_get_metafile();
 
-const char* mcachefs_config_journal();
+const char* mcachefs_config_get_journal();
 
-static inline int mcachefs_config_verbose()
+static inline int mcachefs_config_get_verbose()
 {
     if ( current_config == NULL )
     {
@@ -87,7 +101,7 @@ static inline int mcachefs_config_verbose()
     return current_config->verbose;
 }
 
-static inline FILE* mcachefs_config_log_fd()
+static inline FILE* mcachefs_config_get_log_fd()
 {
     if ( current_config == NULL )
     {
@@ -96,6 +110,30 @@ static inline FILE* mcachefs_config_log_fd()
     return current_config->log_fd;
 }
 
-int mcachefs_config_transfer_threads_nb(int type);
+int mcachefs_config_get_transfer_threads_nb(int type);
+
+/**
+ * General status and configuration retrival and setting
+ */
+void mcachefs_config_set_read_state (int rdstate);
+int mcachefs_config_get_read_state ();
+
+void mcachefs_config_set_write_state (int wrstate);
+int mcachefs_config_get_write_state ();
+
+int mcachefs_config_get_file_thread_interval ();
+void mcachefs_config_set_file_thread_interval (int interval);
+
+int mcachefs_config_get_file_ttl ();
+void mcachefs_config_set_file_ttl (int ttl);
+
+off_t mcachefs_config_get_transfer_max_rate ();
+void mcachefs_config_set_transfer_max_rate (off_t rate);
+
+/**
+ * Cleanup Backing configuration
+ */
+int mcachefs_config_get_cleanup_cache_age ();
+const char *mcachefs_config_get_cleanup_cache_prefix ();
 
 #endif // __MCACHEFS_CONFIG_H

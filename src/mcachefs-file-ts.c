@@ -240,17 +240,9 @@ mcachefs_file_timeslice_cleanup ()
     /**
      * Cleanup files
      */
-    mcachefs_file_timeslice_cleanup_list (mcachefs_get_file_ttl (),
+    mcachefs_file_timeslice_cleanup_list (mcachefs_config_get_file_ttl (),
                                           &mcachefs_file_cleanup_file);
 
-
-#if 0
-    /**
-     * Cleanup dirs
-     */
-    mcachefs_file_timeslice_cleanup_list (mcachefs_get_metadata_ttl (),
-                                          &mcachefs_metadata_cleanup_dir);
-#endif
 
     /**
      * Cleanup vops

@@ -29,16 +29,16 @@
     struct timeb tb; ftime(&tb); \
     struct tm tbm; localtime_r ( &(tb.time), &tbm ); \
     char tbuff[64]; strftime ( tbuff, 64, "%y%m%d:%H%M%S", &tbm ); \
-    fprintf(mcachefs_config_log_fd(), __prefix "|%lx|%s:%d|" __FILE__ ":%d:%s|" __fmt, \
+    fprintf(mcachefs_config_get_log_fd(), __prefix "|%lx|%s:%d|" __FILE__ ":%d:%s|" __fmt, \
         pthread_self(), tbuff, tb.millitm, __LINE__,  __FUNCTION__, \
         ##__VA_ARGS__ ); \
-    fflush(mcachefs_config_log_fd()); } \
+    fflush(mcachefs_config_get_log_fd()); } \
   while(0)
 
 #ifdef DEBUG
 #define Log(...) \
   do { \
-    if(mcachefs_config_verbose() > 50 ) \
+    if(mcachefs_config_get_verbose() > 50 ) \
       __Log("LOG",__VA_ARGS__); \
    } while (0)
 #else

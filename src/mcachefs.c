@@ -27,8 +27,8 @@ main (int argc, char *argv[])
 
     mcachefs_file_timeslice_init_variables ();
 
-    mcachefs_setstate (MCACHEFS_STATE_NORMAL);
-    mcachefs_setwrstate (MCACHEFS_WRSTATE_CACHE);
+    mcachefs_config_set_read_state (MCACHEFS_STATE_NORMAL);
+    mcachefs_config_set_write_state (MCACHEFS_WRSTATE_CACHE);
 
     mcachefs_metadata_open ();
 

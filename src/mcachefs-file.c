@@ -358,7 +358,7 @@ mcachefs_file_getfd_mode (struct mcachefs_file_t *mfile, int real, int flags,
          flags, mode);
     if (real)
     {
-        if (mcachefs_getstate () == MCACHEFS_STATE_HANDSUP)
+        if (mcachefs_config_get_read_state () == MCACHEFS_STATE_HANDSUP)
         {
             Bug ("While openning real file for '%s' : mcachefs state set to HANDSUP.\n", mfile->path);
             return -EIO;
@@ -505,7 +505,7 @@ mcachefs_file_thread (void *arg)
     (void) arg;
     while (1)
     {
-        if (mcachefs_getstate () == MCACHEFS_STATE_QUITTING)
+        if (mcachefs_config_get_read_state () == MCACHEFS_STATE_QUITTING)
         {
             Log ("Interrupting file thread %lx\n",
                  (unsigned long) pthread_self ());
@@ -523,7 +523,7 @@ mcachefs_file_thread (void *arg)
         // Finally, unlock file lock
         mcachefs_file_unlock ();
 
-        sleep (mcachefs_get_file_thread_interval ());
+        sleep (mcachefs_config_get_file_thread_interval ());
     }
     return NULL;
 }
