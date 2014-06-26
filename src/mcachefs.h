@@ -1,7 +1,7 @@
 #ifndef __FUSE_MCACHEFS_H
 #define __FUSE_MCACHEFS_H
 
-#define __MCACHEFS_VERSION__ "0.5.30"
+#define __MCACHEFS_VERSION__ "0.6.0"
 
 #define FUSE_USE_VERSION 29
 #define _BSD_SOURCE
