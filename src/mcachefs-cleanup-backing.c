@@ -189,7 +189,7 @@ mcachefs_backing_sort (struct mcachefs_backing_files *filelist)
 
 
 void
-mcachefs_cleanup_backing (struct mcachefs_file_t *mvops, int simulate)
+mcachefs_cleanup_backing () // struct mcachefs_file_t *mvops, int simulate)
 {
     int rootfd = -1, backingfd;
     int max_age;
@@ -240,6 +240,7 @@ mcachefs_cleanup_backing (struct mcachefs_file_t *mvops, int simulate)
             continue;
         }
         total += file->size;
+#if 0
         if (simulate)
         {
             __VOPS_WRITE (mvops, "%lu\t%lu\t%s\n", (unsigned long) file->age,
@@ -247,6 +248,7 @@ mcachefs_cleanup_backing (struct mcachefs_file_t *mvops, int simulate)
         }
         else
         {
+#endif
             relative_path = file->path;
             if (*relative_path == '/')
                 relative_path++;
@@ -255,13 +257,17 @@ mcachefs_cleanup_backing (struct mcachefs_file_t *mvops, int simulate)
                 Err ("Could not unlink '%s' : err=%d:%s\n", file->path, errno,
                      strerror (errno));
             }
+#if 0
         }
+#endif
     }
+#if 0
     if (simulate)
     {
         __VOPS_WRITE (mvops, "Total : %lu Mb\n",
                       ((unsigned long) total) >> 20);
     }
+#endif
     free (prefix);
 
     for (file = filelist.head; file; file = file->next)
