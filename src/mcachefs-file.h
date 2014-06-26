@@ -8,6 +8,8 @@
 #ifndef MCACHEFSFILE_H_
 #define MCACHEFSFILE_H_
 
+#include "mcachefs-hash.h"
+
 struct mcachefs_metadata_t;
 
 /**

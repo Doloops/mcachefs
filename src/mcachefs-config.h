@@ -35,12 +35,25 @@ struct mcachefs_config
      * Journal cache file
      */
     char* journal;
-    
+
+    /*
+     * Log verbosity
+     */    
     int verbose;
+    
+    /**
+     * Log filedescriptor
+     */
     FILE *log_fd;
     
+    /**
+     * Number of threads per thread type
+     */
     int transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPES];
     
+    /**
+     * The actual fuse arguments as passed to libfuse
+     */
     struct fuse_args fuse_args;
 };
 

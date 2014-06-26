@@ -1,7 +1,7 @@
 HEADERS = mcachefs.h
 OBJECTS = mcachefs.o mcachefs-util.o mcachefs-metadata.o mcachefs-file.o mcachefs-file-ts.o 
 OBJECTS += mcachefs-vops.o mcachefs-journal.o mcachefs-mutex.o mcachefs-transfer.o mcachefs-cleanup-backing.o
-OBJECTS += mcachefs-io.o mcachefs-lowlevel.o
+OBJECTS += mcachefs-io.o mcachefs-lowlevel.o mcachefs-hash.o
 OBJECTS += mcachefs-config.o
 CC = gcc
 

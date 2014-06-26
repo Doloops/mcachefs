@@ -10,14 +10,10 @@
 
 #define __IS_WRITE(__flag) ( (__flag) & ( O_RDWR | O_WRONLY ) )
 
+
 /**
  * Utility parts : make paths (prefix them with the real- or backing-part), create backing paths on purpose, ..
  */
-hash_t continueHashPartial (hash_t h, const char *str, int sz);
-hash_t continueHash (hash_t h, const char *str);
-hash_t doHash (const char *str);
-hash_t doHashPartial (const char *str, int sz);
-
 char *mcachefs_makepath (const char *path, const char *prefix);
 char *mcachefs_makepath_source (const char *path);
 char *mcachefs_makepath_cache (const char *path);

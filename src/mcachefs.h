@@ -54,11 +54,6 @@
 #define MCACHEFS_WRSTATE_FORCE 2
 
 /**
- * Hash values, used for hashing paths
- */
-typedef unsigned long long int hash_t;
-
-/**
  * Fuse File Handlers, provided by mcachefs at open() and used in read(), write() and release()
  */
 typedef unsigned long long mcachefs_fh_t;
@@ -74,18 +69,6 @@ typedef unsigned long long mcachefs_metadata_id;
 #include "mcachefs-vops.h"
 #include "mcachefs-log.h"
 #include "mcachefs-io.h"
-
-#if 0
-/**
- * Common variables
- */
-extern char *mcachefs_mountpoint;
-extern char *mcachefs_target;
-extern char *mcachefs_backing;
-extern char *mcachefs_metadir;
-extern char *mcachefs_metafile;
-extern char *mcachefs_journal;
-#endif
 
 extern struct fuse_operations mcachefs_oper;
 
