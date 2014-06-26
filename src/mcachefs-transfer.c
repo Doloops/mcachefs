@@ -1,4 +1,8 @@
 #include "mcachefs.h"
+#include "mcachefs-journal.h"
+#include "mcachefs-transfer.h"
+#include "mcachefs-vops.h"
+
 #include <sys/sendfile.h>
 
 // #define  __MCACHEFS_TRANSFER_DO_FTRUNCATE_TARGET

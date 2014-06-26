@@ -1,12 +1,7 @@
 #ifndef __MCACHEFS_HASH_H
 #define __MCACHEFS_HASH_H
 
-
-
-/**
- * Hash values, used for hashing paths
- */
-typedef unsigned long long int hash_t;
+#include "mcachefs-types.h"
 
 /**
  * Reentrant Hashing algorithm

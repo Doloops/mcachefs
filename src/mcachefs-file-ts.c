@@ -1,4 +1,5 @@
 #include "mcachefs.h"
+#include "mcachefs-vops.h"
 
 #if 0
 #define Log_TS Log

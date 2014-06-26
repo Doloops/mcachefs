@@ -6,6 +6,9 @@
  */
 
 #include "mcachefs.h"
+#include "mcachefs-journal.h"
+#include "mcachefs-transfer.h"
+#include "mcachefs-vops.h"
 
 static const int WAIT_CACHE_INTERVAL = 5 * 1000 * 1000;
 

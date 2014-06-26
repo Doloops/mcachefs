@@ -1,4 +1,5 @@
 #include "mcachefs.h"
+#include "mcachefs-vops.h"
 
 #include <sys/types.h>
 

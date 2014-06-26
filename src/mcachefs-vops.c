@@ -1,4 +1,7 @@
 #include "mcachefs.h"
+#include "mcachefs-journal.h"
+#include "mcachefs-transfer.h"
+#include "mcachefs-vops.h"
 
 const char *state_file = "state";
 const char *state_names[] =

@@ -37,38 +37,13 @@
 
 #define PARANOID 0
 
-/**
- * States of the backing mechanism
- */
-#define MCACHEFS_STATE_NORMAL   0
-#define MCACHEFS_STATE_FULL     1
-#define MCACHEFS_STATE_HANDSUP  2
-#define MCACHEFS_STATE_NOCACHE  3
-#define MCACHEFS_STATE_QUITTING 4
-
-/**
- * States of the writing mechanism
- */
-#define MCACHEFS_WRSTATE_CACHE 0
-#define MCACHEFS_WRSTATE_FLUSH 1
-#define MCACHEFS_WRSTATE_FORCE 2
-
-/**
- * Fuse File Handlers, provided by mcachefs at open() and used in read(), write() and release()
- */
-typedef unsigned long long mcachefs_fh_t;
-typedef unsigned long long mcachefs_metadata_id;
+#include "mcachefs-log.h"
 
 #include "mcachefs-config.h"
 #include "mcachefs-mutex.h"
 #include "mcachefs-file.h"
 #include "mcachefs-metadata.h"
-#include "mcachefs-journal.h"
 #include "mcachefs-util.h"
-#include "mcachefs-transfer.h"
-#include "mcachefs-vops.h"
-#include "mcachefs-log.h"
-#include "mcachefs-io.h"
 
 extern struct fuse_operations mcachefs_oper;
 

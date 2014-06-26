@@ -1,4 +1,6 @@
 #include "mcachefs.h"
+#include "mcachefs-hash.h"
+#include "mcachefs-journal.h"
 
 /**
  * mcachefs File handling

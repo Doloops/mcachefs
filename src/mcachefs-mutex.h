@@ -8,16 +8,7 @@
 #ifndef MCACHEFSMUTEX_H_
 #define MCACHEFSMUTEX_H_
 
-
-/**
- * Mcachefs MUTEX type
- */
-struct mcachefs_mutex_t
-{
-    pthread_mutex_t mutex;
-    pthread_t owner;
-    const char *context;
-};
+#include "mcachefs-types.h"
 
 /**
  * MCachefs mutex interface, based on pthread_mutex
@@ -44,28 +35,28 @@ extern struct mcachefs_mutex_t mcachefs_transfer_mutex;
 #define mcachefs_metadata_lock() do { \
     mcachefs_file_check_unlocked(); \
     mcachefs_mutex_lock ( &mcachefs_metadata_mutex, "metadata", __CONTEXT ); } while (0)
-#define mcachefs_metadata_unlock() mcachefs_mutex_unlock ( &mcachefs_metadata_mutex, "metadata", __CONTEXT );
-#define mcachefs_metadata_check_locked() mcachefs_mutex_check_locked ( &mcachefs_metadata_mutex, "metadata", __CONTEXT );
-#define mcachefs_metadata_check_unlocked() mcachefs_mutex_check_unlocked ( &mcachefs_metadata_mutex, "metadata", __CONTEXT );
+#define mcachefs_metadata_unlock() mcachefs_mutex_unlock ( &mcachefs_metadata_mutex, "metadata", __CONTEXT )
+#define mcachefs_metadata_check_locked() mcachefs_mutex_check_locked ( &mcachefs_metadata_mutex, "metadata", __CONTEXT )
+#define mcachefs_metadata_check_unlocked() mcachefs_mutex_check_unlocked ( &mcachefs_metadata_mutex, "metadata", __CONTEXT )
 
 #define mcachefs_file_lock() do { \
     mcachefs_mutex_lock ( &mcachefs_file_mutex, "file", __CONTEXT ); } while (0)
-#define mcachefs_file_unlock() mcachefs_mutex_unlock ( &mcachefs_file_mutex, "file", __CONTEXT );
-#define mcachefs_file_check_locked() mcachefs_mutex_check_locked ( &mcachefs_file_mutex, "file", __CONTEXT );
-#define mcachefs_file_check_unlocked() mcachefs_mutex_check_unlocked ( &mcachefs_file_mutex, "file", __CONTEXT );
+#define mcachefs_file_unlock() mcachefs_mutex_unlock ( &mcachefs_file_mutex, "file", __CONTEXT )
+#define mcachefs_file_check_locked() mcachefs_mutex_check_locked ( &mcachefs_file_mutex, "file", __CONTEXT )
+#define mcachefs_file_check_unlocked() mcachefs_mutex_check_unlocked ( &mcachefs_file_mutex, "file", __CONTEXT )
 
-#define mcachefs_journal_lock() mcachefs_mutex_lock ( &mcachefs_journal_mutex, "journal", __CONTEXT );
-#define mcachefs_journal_unlock() mcachefs_mutex_unlock ( &mcachefs_journal_mutex, "journal", __CONTEXT );
-#define mcachefs_journal_check_locked() mcachefs_mutex_check_locked ( &mcachefs_journal_mutex, "journal", __CONTEXT );
-#define mcachefs_journal_check_unlocked() mcachefs_mutex_check_unlocked ( &mcachefs_journal_mutex, "journal", __CONTEXT );
+#define mcachefs_journal_lock() mcachefs_mutex_lock ( &mcachefs_journal_mutex, "journal", __CONTEXT )
+#define mcachefs_journal_unlock() mcachefs_mutex_unlock ( &mcachefs_journal_mutex, "journal", __CONTEXT )
+#define mcachefs_journal_check_locked() mcachefs_mutex_check_locked ( &mcachefs_journal_mutex, "journal", __CONTEXT )
+#define mcachefs_journal_check_unlocked() mcachefs_mutex_check_unlocked ( &mcachefs_journal_mutex, "journal", __CONTEXT )
 
-#define mcachefs_transfer_lock() mcachefs_mutex_lock ( &mcachefs_transfer_mutex, "backing", __CONTEXT );
-#define mcachefs_transfer_unlock() mcachefs_mutex_unlock ( &mcachefs_transfer_mutex, "backing", __CONTEXT );
+#define mcachefs_transfer_lock() mcachefs_mutex_lock ( &mcachefs_transfer_mutex, "backing", __CONTEXT )
+#define mcachefs_transfer_unlock() mcachefs_mutex_unlock ( &mcachefs_transfer_mutex, "backing", __CONTEXT )
 
 #define mcachefs_file_lock_file(__mfile) do { \
     mcachefs_mutex_lock ( &(__mfile->mutex), __mfile->path, __CONTEXT ); } while (0)
-#define mcachefs_file_unlock_file(__mfile) mcachefs_mutex_unlock ( &(__mfile->mutex), __mfile->path, __CONTEXT );
-#define mcachefs_file_check_locked_file(__mfile) mcachefs_mutex_check_locked ( &(__mfile->mutex), __mfile->path, __CONTEXT );
-#define mcachefs_file_check_unlocked_file(__mfile) mcachefs_mutex_check_unlocked ( &(__mfile->mutex), __mfile->path, __CONTEXT );
+#define mcachefs_file_unlock_file(__mfile) mcachefs_mutex_unlock ( &(__mfile->mutex), __mfile->path, __CONTEXT )
+#define mcachefs_file_check_locked_file(__mfile) mcachefs_mutex_check_locked ( &(__mfile->mutex), __mfile->path, __CONTEXT )
+#define mcachefs_file_check_unlocked_file(__mfile) mcachefs_mutex_check_unlocked ( &(__mfile->mutex), __mfile->path, __CONTEXT )
 
 #endif /* MCACHEFSMUTEX_H_ */
