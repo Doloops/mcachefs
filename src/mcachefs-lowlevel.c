@@ -13,7 +13,9 @@
 #include "mcachefs-io.h"
 #include "mcachefs-journal.h"
 #include "mcachefs-transfer.h"
+#include "mcachefs-vops.h"
 
+#if 0
 struct stat mcachefs_target_stat;
 
 void
@@ -28,9 +30,10 @@ __mcachefs_fill_stat(struct stat *st, int type, off_t size)
     st->st_gid = mcachefs_target_stat.st_gid;
     st->st_size = size;
 }
+#endif
 
-#define __MCACHEFS_IS_VOPS_DIR(__path) ( strcmp(path, "/.mcachefs" ) == 0 )
-#define __MCACHEFS_IS_VOPS_FILE(__path) ( strncmp(path, "/.mcachefs/", 11 ) == 0 )
+#define __MCACHEFS_IS_VOPS_DIR(__path) ( strcmp(path, MCACHEFS_VOPS_DIR) == 0 )
+#define __MCACHEFS_IS_VOPS_FILE(__path) ( strncmp(path, MCACHEFS_VOPS_FILE_PREFIX, 11 ) == 0 )
 
 static int
 mcachefs_getattr(const char *path, struct stat *stbuf)

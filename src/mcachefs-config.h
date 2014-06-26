@@ -64,7 +64,7 @@ struct mcachefs_config
 
     int file_ttl;
 
-    off_t transfer_max_rate;
+    int transfer_max_rate;
 
     int cleanup_cache_age;
 
@@ -127,8 +127,8 @@ void mcachefs_config_set_file_thread_interval (int interval);
 int mcachefs_config_get_file_ttl ();
 void mcachefs_config_set_file_ttl (int ttl);
 
-off_t mcachefs_config_get_transfer_max_rate ();
-void mcachefs_config_set_transfer_max_rate (off_t rate);
+int mcachefs_config_get_transfer_max_rate ();
+void mcachefs_config_set_transfer_max_rate (int rate);
 
 /**
  * Cleanup Backing configuration

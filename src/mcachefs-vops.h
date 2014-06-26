@@ -8,6 +8,10 @@
 #ifndef MCACHEFSVOPS_H_
 #define MCACHEFSVOPS_H_
 
+#define MCACHEFS_VOPS_DIR "/.mcachefs"
+#define MCACHEFS_VOPS_FILE_PREFIX "/.mcachefs/"
+
+
 /**
  * *********************** VOPS *******************************
  */

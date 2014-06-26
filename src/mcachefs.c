@@ -39,7 +39,11 @@ main (int argc, char *argv[])
         exit (-1);
     }
 
+#if 0
     memcpy (&mcachefs_target_stat, &(mdata_root->st), sizeof (struct stat));
+#endif
+    mcachefs_metadata_get_child(mdata_root);
+
     mcachefs_metadata_release (mdata_root);
 
 #ifdef MCACHEFS_DISABLE_WRITE

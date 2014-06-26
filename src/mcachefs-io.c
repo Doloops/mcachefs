@@ -45,7 +45,9 @@ mcachefs_open_mfile (struct mcachefs_file_t *mfile,
              (unsigned long long) info->fh, mfile->contents);
         info->direct_io = 1;
         if (!__IS_WRITE (info->flags))
+        {
             mcachefs_vops_build (mfile);
+        }
     }
 
     return 0;

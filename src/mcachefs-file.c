@@ -217,7 +217,7 @@ mcachefs_file_release (struct mcachefs_file_t *mfile)
 
     if (mfile->use == 0)
     {
-        Log ("releasing '%s'\n", mfile->path);
+        Log ("releasing '%s' (type %d)\n", mfile->path, mfile->type);
 
         if (mfile->type == mcachefs_file_type_file)
         {

@@ -320,30 +320,42 @@ mcachefs_config_get_file_ttl()
 {
     return current_config->file_ttl;
 }
+
+extern const int mcachefs_file_timeslice_nb;
+
 void
 mcachefs_config_set_file_ttl(int ttl)
 {
-    current_config->file_ttl = ttl;
+    if (0 < ttl && ttl < mcachefs_file_timeslice_nb)
+    {
+        current_config->file_ttl = ttl;
+    }
+    else
+    {
+        Err("Invalid value for ttl : %d\n", ttl);
+    }
 }
 
-off_t
+int
 mcachefs_config_get_transfer_max_rate()
 {
     return current_config->transfer_max_rate;
 }
 
 void
-mcachefs_config_set_transfer_max_rate(off_t rate)
+mcachefs_config_set_transfer_max_rate(int rate)
 {
     current_config->transfer_max_rate = rate;
 }
 
-int mcachefs_config_get_cleanup_cache_age ()
+int
+mcachefs_config_get_cleanup_cache_age()
 {
     return current_config->cleanup_cache_age;
 }
 
-const char *mcachefs_config_get_cleanup_cache_prefix ()
+const char *
+mcachefs_config_get_cleanup_cache_prefix()
 {
     return current_config->cleanup_cache_prefix;
 }

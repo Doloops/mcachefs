@@ -104,9 +104,10 @@ mcachefs_metadata_open()
     }
     else
     {
-        mcachefs_metadata_fd = open(mcachefs_config_get_metafile(),
-                O_CREAT | O_TRUNC | O_RDWR,
-                (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH));
+        mcachefs_metadata_fd =
+                open(mcachefs_config_get_metafile(), O_CREAT | O_TRUNC | O_RDWR,
+                        (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH
+                                | S_IWOTH));
     }
 
     if (mcachefs_metadata_fd == -1)

@@ -38,7 +38,7 @@
 #ifdef DEBUG
 #define Log(...) \
   do { \
-    if(mcachefs_config_get_verbose() > 50 ) \
+    if(mcachefs_config_get_verbose() > -1 ) \
       __Log("LOG",__VA_ARGS__); \
    } while (0)
 #else
