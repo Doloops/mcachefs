@@ -77,6 +77,7 @@ struct mcachefs_vops_proc vops_procs[] =
         { "transfer", NULL, NULL, NULL, &mcachefs_transfer_dump },
         { "journal", NULL, NULL, NULL, &mcachefs_journal_dump },
         { "metadata", NULL, NULL, NULL, &mcachefs_metadata_dump },
+        { "timeslices", NULL, NULL, NULL, &mcachefs_file_timeslices_dump },
         { "action", &mcachefs_get_default_action, &mcachefs_call_action,
                 vops_action_names, NULL },
         { NULL, NULL, NULL, NULL, NULL } };
