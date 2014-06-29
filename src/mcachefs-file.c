@@ -46,7 +46,7 @@ mcachefs_file_init (mcachefs_fh_t fh, char *path, hash_t hash,
                                 sources[MCACHEFS_FILE_SOURCE_BACKING]));
     mcachefs_file_source_init (&(mfile->sources[MCACHEFS_FILE_SOURCE_REAL]));
 
-    mfile->backing_status = MCACHEFS_FILE_BACKING_ASKED;
+    mfile->cache_status = MCACHEFS_FILE_BACKING_ASKED;
 
     mfile->timeslice = -1;
     mfile->timeslice_previous = NULL;
@@ -154,7 +154,7 @@ mcachefs_file_cleanup_file (struct mcachefs_file_t *mfile)
                                        (mfile->
                                         sources[MCACHEFS_FILE_SOURCE_REAL]));
 
-    if (mfile->backing_status == MCACHEFS_FILE_BACKING_DONE)
+    if (mfile->cache_status == MCACHEFS_FILE_BACKING_DONE)
         mcachefs_file_cleanup_file_source (&
                                            (mfile->
                                             sources
@@ -400,7 +400,7 @@ mcachefs_file_getfd_mode (struct mcachefs_file_t *mfile, int real, int flags,
     else
     {
         if (mode == O_RDONLY
-            && mfile->backing_status == MCACHEFS_FILE_BACKING_ASKED)
+            && mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED)
         {
             Err ("Asking for backing while backing not done !\n");
             return -EIO;

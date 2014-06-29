@@ -13,9 +13,13 @@
 
 #include "mcachefs.h"
 
+FILE* LOG_FD;
+
 int
 main (int argc, char *argv[])
 {
+    LOG_FD = stderr;
+
     struct mcachefs_config* config;
     struct mcachefs_metadata_t *mdata_root;
 

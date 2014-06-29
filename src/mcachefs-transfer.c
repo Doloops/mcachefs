@@ -51,7 +51,7 @@ mcachefs_transfer_backfile (struct mcachefs_file_t *mfile)
      */
     mcachefs_file_lock_file (mfile);
 
-    if (mfile->backing_status == MCACHEFS_FILE_BACKING_IN_PROGRESS)
+    if (mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS)
     {
         Log ("Backing in progress for file '%s'\n", mfile->path);
         mcachefs_file_unlock_file (mfile);
@@ -60,16 +60,16 @@ mcachefs_transfer_backfile (struct mcachefs_file_t *mfile)
 
     if (mcachefs_fileincache (mfile->path))
     {
-        mfile->backing_status = MCACHEFS_FILE_BACKING_DONE;
+        mfile->cache_status = MCACHEFS_FILE_BACKING_DONE;
         Log ("Backing ok for file '%s' (status set to %d)\n", mfile->path,
-             mfile->backing_status);
+             mfile->cache_status);
         mcachefs_file_unlock_file (mfile);
         return 0;
     }
 
     Log ("Asking backing for file '%s'\n", mfile->path);
 
-    mfile->backing_status = MCACHEFS_FILE_BACKING_ASKED;
+    mfile->cache_status = MCACHEFS_FILE_BACKING_ASKED;
     mfile->use++;
     mcachefs_file_unlock_file (mfile);
 
@@ -109,12 +109,12 @@ mcachefs_transfer_writeback (const char *path)
     mcachefs_metadata_release (mdata);
 
     mfile = mcachefs_file_get (fh);
-    mfile->backing_status = MCACHEFS_FILE_BACKING_DONE;
+    mfile->cache_status = MCACHEFS_FILE_BACKING_DONE;
 
-    if (mfile->backing_status != MCACHEFS_FILE_BACKING_DONE)
+    if (mfile->cache_status != MCACHEFS_FILE_BACKING_DONE)
     {
         Bug ("Error ! mfile=%s has backing=%d\n", mfile->path,
-             mfile->backing_status);
+             mfile->cache_status);
     }
     return mcachefs_transfer_queue_file (mfile,
                                          MCACHEFS_TRANSFER_TYPE_WRITEBACK);
@@ -260,9 +260,9 @@ mcachefs_transfer_thread (void *arg)
 
         Log ("File locked.\n");
 
-        if (mfile->backing_status == MCACHEFS_FILE_BACKING_ASKED)
+        if (mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED)
         {
-            mfile->backing_status = MCACHEFS_FILE_BACKING_IN_PROGRESS;
+            mfile->cache_status = MCACHEFS_FILE_BACKING_IN_PROGRESS;
         }
         mcachefs_file_unlock_file (mfile);
         me->currentfile = mfile;
@@ -431,7 +431,7 @@ mcachefs_transfer_do_transfer (struct mcachefs_file_t *mfile)
     mcachefs_metadata_release (mdata);
 
     mcachefs_file_lock_file (mfile);
-    tobacking = (mfile->backing_status == MCACHEFS_FILE_BACKING_IN_PROGRESS);
+    tobacking = (mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS);
 
     mfile->transfer.tobacking = tobacking;
     mfile->transfer.total_size = size;
@@ -470,7 +470,7 @@ mcachefs_transfer_do_backing (struct mcachefs_file_t *mfile)
     mcachefs_file_check_unlocked_file (mfile);
 
     mcachefs_file_lock_file (mfile);
-    mfile->backing_status = MCACHEFS_FILE_BACKING_ERROR;
+    mfile->cache_status = MCACHEFS_FILE_BACKING_ERROR;
     mfile->transfer.transfered_size = 0;
     mcachefs_file_unlock_file (mfile);
 
@@ -765,7 +765,7 @@ mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking)
 
     mcachefs_file_lock_file (mfile);
     if (tobacking)
-        mfile->backing_status = MCACHEFS_FILE_BACKING_DONE;
+        mfile->cache_status = MCACHEFS_FILE_BACKING_DONE;
     if (mfile->sources[MCACHEFS_FILE_SOURCE_REAL].use == 0)
     {
         close (mfile->sources[MCACHEFS_FILE_SOURCE_REAL].fd);
@@ -819,8 +819,8 @@ mcachefs_transfer_dump (struct mcachefs_file_t *mvops)
             rate = mfile->transfer.rate;
             total_rate += rate;
             tobacking =
-                (mfile->backing_status == MCACHEFS_FILE_BACKING_IN_PROGRESS
-                 || mfile->backing_status == MCACHEFS_FILE_BACKING_ASKED);
+                (mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS
+                 || mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED);
             mcachefs_file_unlock_file (mfile);
 
             __VOPS_WRITE (mvops,
@@ -853,7 +853,7 @@ mcachefs_transfer_dump (struct mcachefs_file_t *mvops)
     for (mqueue = mcachefs_transfer_queue_head; mqueue; mqueue = mqueue->next)
     {
         tobacking =
-            (mqueue->mfile->backing_status != MCACHEFS_FILE_BACKING_DONE);
+            (mqueue->mfile->cache_status != MCACHEFS_FILE_BACKING_DONE);
         __VOPS_WRITE (mvops, "\t%s %s\n",
                       (mqueue->mfile->type ==
                        mcachefs_file_type_dir) ? "Fill meta" : (tobacking ?

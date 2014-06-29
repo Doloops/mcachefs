@@ -110,20 +110,11 @@ struct mcachefs_file_t
      * File descriptor accessors
      */
     struct mcachefs_file_source_t sources[2];
-    /*
-     int use_real_fd; //< The number of current uses of the real fd
-     int real_fd;     //< The real fd (can be reset by the garbage thread, so use mcachefs_file_getfd(,1) instead of calling it directly
-     int real_wr;     //< Marker that sets that real_fd is openned O_WR
-
-     int backing_fd;  //< The number of current uses of the backing fd
-     int use_backing_fd; //< The backing fd (can be reset by the garbage thread, so use mcachefs_file_getfd(,0) instead of calling it directly
-     int backing_wr;     //< Marker that sets that backing_fd is openned O_WR
-     */
 
     /**
      * Backing part
      */
-    int backing_status; //< Indicate the state of the backing : asked, in progress, done
+    int cache_status; //< Indicate the state of the backing : asked, in progress, done
     int dirty; //< If the file has been written, this flag indicates the backing file is fresher than the real one
     // off_t backed_size; //< How many bytes have been backed now, only available when backing == IN_PROGRESS
 

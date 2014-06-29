@@ -5,6 +5,7 @@
 
 #define FUSE_USE_VERSION 29
 #define _BSD_SOURCE
+
 #ifdef linux
 /* For pread()/pwrite() */
 #define _XOPEN_SOURCE 600
@@ -14,7 +15,6 @@
 
 #include <fuse.h>
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
@@ -24,12 +24,10 @@
 #include <sys/mman.h>
 #include <sys/file.h>
 #include <sys/statvfs.h>
-#include <pthread.h>
 #include <semaphore.h>
 #include <sys/stat.h>
 #include <linux/limits.h>
 
-#include <sys/timeb.h>
 #include <sys/time.h>
 #include <time.h>
 

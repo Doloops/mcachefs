@@ -10,6 +10,10 @@
 
 #include "mcachefs-types.h"
 
+#include <pthread.h>
+#include <sys/timeb.h>
+#include <string.h>
+
 /**
  * MCachefs mutex interface, based on pthread_mutex
  */

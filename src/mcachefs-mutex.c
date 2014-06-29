@@ -1,4 +1,5 @@
-#include "mcachefs.h"
+#include "mcachefs-mutex.h"
+#include "mcachefs-log.h"
 
 #if 0
 #define Log_Mutex Log

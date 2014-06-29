@@ -777,7 +777,6 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
     int fd;
     DIR *dp;
     struct dirent *de;
-    const char **vops_list;
     mcachefs_metadata_id fatherid = father->id, newid;
 
     struct mcachefs_metadata_t *newmeta = NULL;
@@ -827,6 +826,7 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
     else if (father->father == mcachefs_metadata_id_root
             && strncmp(father->d_name, ".mcachefs", NAME_MAX + 1) == 0)
     {
+        const char **vops_list;
         for (vops_list = mcachefs_vops_get_vops_list(); *vops_list; vops_list++)
         {
             newid = mcachefs_metadata_allocate();

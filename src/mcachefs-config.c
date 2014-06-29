@@ -186,7 +186,6 @@ mcachefs_set_current_config(struct mcachefs_config* config)
     check_file_dir_exists(config->journal);
 
     config->verbose = DEFAULT_VERBOSE;
-    config->log_fd = stderr;
 
     int threadtype;
     for (threadtype = 0; threadtype < MCACHEFS_TRANSFER_TYPES; threadtype++)

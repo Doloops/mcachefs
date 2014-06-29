@@ -12,10 +12,14 @@
 
 #ifdef __MCACHEFS_USES_SYSLOG
 #include <syslog.h>
+#else
+#include <stdio.h>
 #endif
 /**
  * Logging facility
  */
+
+extern FILE* LOG_FD;
 
 #ifdef __MCACHEFS_USES_SYSLOG
 #define Log(...)  syslog(LOG_DEBUG, __VA_ARGS__)
@@ -29,10 +33,10 @@
     struct timeb tb; ftime(&tb); \
     struct tm tbm; localtime_r ( &(tb.time), &tbm ); \
     char tbuff[64]; strftime ( tbuff, 64, "%y%m%d:%H%M%S", &tbm ); \
-    fprintf(mcachefs_config_get_log_fd(), __prefix "|%lx|%s:%d|" __FILE__ ":%d:%s|" __fmt, \
+    fprintf(LOG_FD, __prefix "|%lx|%s:%d|" __FILE__ ":%d:%s|" __fmt, \
         pthread_self(), tbuff, tb.millitm, __LINE__,  __FUNCTION__, \
         ##__VA_ARGS__ ); \
-    fflush(mcachefs_config_get_log_fd()); } \
+    fflush(LOG_FD); } \
   while(0)
 
 #ifdef DEBUG

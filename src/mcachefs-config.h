@@ -42,11 +42,6 @@ struct mcachefs_config
     int verbose;
     
     /**
-     * Log filedescriptor
-     */
-    FILE *log_fd;
-    
-    /**
      * Number of threads per thread type
      */
     int transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPES];
@@ -99,15 +94,6 @@ static inline int mcachefs_config_get_verbose()
         return 100;
     }
     return current_config->verbose;
-}
-
-static inline FILE* mcachefs_config_get_log_fd()
-{
-    if ( current_config == NULL )
-    {
-        return stderr;
-    }
-    return current_config->log_fd;
 }
 
 int mcachefs_config_get_transfer_threads_nb(int type);

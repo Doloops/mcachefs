@@ -376,14 +376,14 @@ mcachefs_file_timeslices_dump_ts (struct mcachefs_file_t *mvops,
                                                   &(mfile->
                                                     sources
                                                     [MCACHEFS_FILE_SOURCE_BACKING]),
-                                                  "back");
+                                                  "cache");
             mcachefs_file_timeslices_dump_source (mvops,
                                                   &(mfile->
                                                     sources
                                                     [MCACHEFS_FILE_SOURCE_REAL]),
-                                                  "real");
+                                                  "source");
 
-            switch (mfile->backing_status)
+            switch (mfile->cache_status)
             {
             case MCACHEFS_FILE_BACKING_ASKED:
                 __VOPS_WRITE (mvops, ",backing=asked");

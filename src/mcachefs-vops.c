@@ -98,7 +98,7 @@ mcachefs_vops_get_vops_list()
         for (i = 0; vops_procs[i].name != NULL ; i++)
         {
             Log("Defined vops : %s\n", vops_procs[i].name);
-            names[i] = vops_procs[i].name;
+            names[i] = strdup(vops_procs[i].name);
         }
     }
     return names;
