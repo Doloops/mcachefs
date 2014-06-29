@@ -90,7 +90,7 @@ mcachefs_vops_get_vops_list()
     if (!names)
     {
         int number_of_entries = sizeof(vops_procs)
-                / sizeof(struct mcachefs_vops_proc);
+                / sizeof(struct mcachefs_vops_proc) + 1;
         Log("Defining %d entries\n", number_of_entries);
         names = (const char**) malloc(sizeof(char*) * number_of_entries);
 
@@ -98,8 +98,9 @@ mcachefs_vops_get_vops_list()
         for (i = 0; vops_procs[i].name != NULL ; i++)
         {
             Log("Defined vops : %s\n", vops_procs[i].name);
-            names[i] = strdup(vops_procs[i].name);
+            names[i] = vops_procs[i].name;
         }
+        names[i] = NULL;
     }
     return names;
 }

@@ -6,7 +6,7 @@
  Metadata functions
  **********************************************************************/
 
-#if 0
+#if 1
 #define Log_M Log
 #else
 #define Log_M(...)
@@ -86,6 +86,9 @@ mcachefs_metadata_reset_fh()
 }
 
 void
+mcachefs_metadata_populate_vops();
+
+void
 mcachefs_metadata_open()
 {
     struct stat st;
@@ -145,6 +148,8 @@ mcachefs_metadata_open()
     Log("Openned metafile '%s'\n", mcachefs_config_get_metafile());
 
     mcachefs_metadata_reset_fh();
+
+    mcachefs_metadata_populate_vops();
 }
 
 void
@@ -807,42 +812,6 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
         Err(
                 "While looking up childrens of '%s' : mcachefs state set to HANDSUP.\n", father->d_name);
         return NULL ;
-    }
-
-    if (father->id == mcachefs_metadata_id_root)
-    {
-        newid = mcachefs_metadata_allocate();
-        newmeta = mcachefs_metadata_get(newid);
-        father = mcachefs_metadata_get(fatherid);
-
-        strncpy(newmeta->d_name, ".mcachefs", NAME_MAX + 1);
-        newmeta->st.st_mode = S_IFDIR | 0700;
-        newmeta->st.st_uid = getuid();
-        newmeta->st.st_gid = getgid();
-        newmeta->st.st_nlink = 1;
-
-        mcachefs_metadata_add_child(father, newmeta);
-    }
-    else if (father->father == mcachefs_metadata_id_root
-            && strncmp(father->d_name, ".mcachefs", NAME_MAX + 1) == 0)
-    {
-        const char **vops_list;
-        for (vops_list = mcachefs_vops_get_vops_list(); *vops_list; vops_list++)
-        {
-            newid = mcachefs_metadata_allocate();
-            newmeta = mcachefs_metadata_get(newid);
-            father = mcachefs_metadata_get(fatherid);
-
-            strncpy(newmeta->d_name, *vops_list, NAME_MAX + 1);
-            newmeta->st.st_mode = S_IFREG | 0600;
-            newmeta->st.st_uid = getuid();
-            newmeta->st.st_gid = getgid();
-            newmeta->st.st_nlink = 1;
-            newmeta->st.st_size = 1 << 20;
-
-            mcachefs_metadata_add_child(father, newmeta);
-        }
-        return mcachefs_metadata_get(father->child);
     }
 
     fd = mcachefs_metadata_recurse_open(father);
@@ -1553,6 +1522,81 @@ mcachefs_metadata_flush_entry(const char *path)
     {
         Err("Path '%s' not found in metadata cache !\n", path);
     }
+}
+
+void
+mcachefs_metadata_vops_remove_previous(struct mcachefs_metadata_t* mdata_root)
+{
+    struct mcachefs_metadata_t* mdata_child;
+    for (mdata_child = mcachefs_metadata_get_child(mdata_root);
+            mdata_child != NULL ;)
+    {
+        Log("[VOPS] Root @child %s\n", mdata_child->d_name);
+        if (strncmp(mdata_child->d_name, MCACHEFS_VOPS_DIR + 1, NAME_MAX) == 0)
+        {
+            Log("[VOPS] Remove previous VOPS entry %llu\n", mdata_child->id);
+            mcachefs_metadata_remove_children(mdata_child);
+            mcachefs_metadata_unlink_entry(mdata_child);
+            mcachefs_metadata_remove_hash(mdata_child);
+            mcachefs_metadata_remove(mdata_child);
+            break;
+        }
+        mdata_child = mcachefs_metadata_get(mdata_child->next);
+    }
+}
+
+struct mcachefs_metadata_t*
+mcachefs_metadata_vops_create_dir(struct mcachefs_metadata_t* mdata_root)
+{
+    mcachefs_metadata_id vops_meta_id = mcachefs_metadata_allocate();
+    struct mcachefs_metadata_t* vops_meta = mcachefs_metadata_get(vops_meta_id);
+
+    strncpy(vops_meta->d_name, MCACHEFS_VOPS_DIR + 1, NAME_MAX + 1);
+    vops_meta->st.st_mode = S_IFDIR | 0700;
+    vops_meta->st.st_uid = getuid();
+    vops_meta->st.st_gid = getgid();
+    vops_meta->st.st_nlink = 1;
+    mcachefs_metadata_add_child(mdata_root, vops_meta);
+
+    return vops_meta;
+}
+
+void
+mcachefs_metadata_vops_create_file(const char* vops_name,
+        struct mcachefs_metadata_t* vops_meta)
+{
+    mcachefs_metadata_id vops_meta_file_id = mcachefs_metadata_allocate();
+    struct mcachefs_metadata_t* vops_meta_file = mcachefs_metadata_get(
+            vops_meta_file_id);
+    Log("d_name at %p, vops_name at %p (%s)\n", vops_meta_file->d_name, vops_name, vops_name);
+    strncpy(vops_meta_file->d_name, vops_name, NAME_MAX + 1);
+    vops_meta_file->st.st_mode = S_IFREG | 0600;
+    vops_meta_file->st.st_uid = getuid();
+    vops_meta_file->st.st_gid = getgid();
+    vops_meta_file->st.st_nlink = 1;
+    vops_meta_file->st.st_size = 1 << 20;
+    mcachefs_metadata_add_child(vops_meta, vops_meta_file);
+}
+
+/**
+ * VOPS metadata functions
+ */
+void
+mcachefs_metadata_populate_vops()
+{
+    struct mcachefs_metadata_t* mdata_root = mcachefs_metadata_find("/");
+    mcachefs_metadata_vops_remove_previous(mdata_root);
+
+    struct mcachefs_metadata_t* vops_meta = mcachefs_metadata_vops_create_dir(
+            mdata_root);
+
+    const char **vops_list;
+    for (vops_list = mcachefs_vops_get_vops_list(); *vops_list; vops_list++)
+    {
+        mcachefs_metadata_vops_create_file(*vops_list, vops_meta);
+    }
+
+    mcachefs_metadata_release(mdata_root);
 }
 
 #ifdef __MCACHEFS_METADATA_HAS_FILLENTRY
