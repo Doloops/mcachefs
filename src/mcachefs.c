@@ -21,7 +21,6 @@ main (int argc, char *argv[])
     LOG_FD = stderr;
 
     struct mcachefs_config* config;
-    struct mcachefs_metadata_t *mdata_root;
 
     printf ("mcachefs " __MCACHEFS_VERSION__ " starting up...\n");
     
@@ -31,23 +30,7 @@ main (int argc, char *argv[])
 
     mcachefs_file_timeslice_init_variables ();
 
-    mcachefs_config_set_read_state (MCACHEFS_STATE_NORMAL);
-    mcachefs_config_set_write_state (MCACHEFS_WRSTATE_CACHE);
-
     mcachefs_metadata_open ();
-
-#if 0
-    mdata_root = mcachefs_metadata_find ("/");
-    if (!mdata_root)
-    {
-        Err ("Could not get metadata for root folder.\n");
-        exit (-1);
-    }
-
-    mcachefs_metadata_get_child(mdata_root);
-
-    mcachefs_metadata_release (mdata_root);
-#endif
 
 #ifdef MCACHEFS_DISABLE_WRITE
     Info ("Serving read-only !\n");

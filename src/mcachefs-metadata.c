@@ -236,12 +236,12 @@ mcachefs_metadata_sync()
     ;
     if (msync(mcachefs_metadata, mcachefs_metadata_size, MS_SYNC))
     {
-        Err("Could not sync metadata : err=%d:%s", errno, strerror (errno));
+        Err("Could not sync metadata : err=%d:%s\n", errno, strerror (errno));
         mcachefs_metadata_unlock ();
         return;
     }
     mcachefs_metadata_unlock ();
-    Log("Metadata synced (size=%lu)", (unsigned long) mcachefs_metadata_size);
+    Log("Metadata synced (size=%lu)\n", (unsigned long) mcachefs_metadata_size);
 }
 
 void
@@ -794,7 +794,7 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
     else if (father->child)
     {
         Log(
-                "Father %s has an explicit child %llu\n", father->d_name, father->child);
+                "Father %s (%llu) has an explicit child %llu\n", father->d_name, father->id, father->child);
         return mcachefs_metadata_get(father->child);
     }
 
@@ -940,7 +940,7 @@ mcachefs_metadata_walk_down(struct mcachefs_metadata_t *father,
     hash = 0;
 
     Log(
-            "May walk down : father=%p:%s, path=%s (path_size=%d), rpath=%s (rpath_size=%d)\n", father, father->d_name, path, path_size, rpath, rpath_size);
+            "May walk down : father=(%p:%llu) %s, path=%s (path_size=%d), rpath=%s (rpath_size=%d)\n", father, father->id, father->d_name, path, path_size, rpath, rpath_size);
 
     struct mcachefs_metadata_t *child = mcachefs_metadata_get_child(father);
     father = NULL;  // get_child may have garbaged father, do not use it anymore
@@ -955,7 +955,7 @@ mcachefs_metadata_walk_down(struct mcachefs_metadata_t *father,
 
     for (; child; child = mcachefs_metadata_get(child->next))
     {
-        Log("walk_down, at child='%s'\n", child->d_name);
+        Log("walk_down, at child='%s' (%llu)\n", child->d_name, child->id);
         if (child->hash == hash
                 && strncmp(child->d_name, rpath, rpath_size) == 0)
         {
@@ -1585,7 +1585,18 @@ void
 mcachefs_metadata_populate_vops()
 {
     struct mcachefs_metadata_t* mdata_root = mcachefs_metadata_find("/");
+    mcachefs_metadata_id mdata_root_id = mdata_root->id;
+
+    /**
+     * Lookup of children may blur initial mdata_root value
+     */
+    mcachefs_metadata_get_child(mdata_root);
+    mdata_root = mcachefs_metadata_get(mdata_root_id);
+
+    Log("Root Id is %llu\n", mdata_root->id);
+
     mcachefs_metadata_vops_remove_previous(mdata_root);
+    Log("After remove_previous, Root Id is %llu\n", mdata_root->id);
 
     struct mcachefs_metadata_t* vops_meta = mcachefs_metadata_vops_create_dir(
             mdata_root);
@@ -1595,6 +1606,9 @@ mcachefs_metadata_populate_vops()
     {
         mcachefs_metadata_vops_create_file(*vops_list, vops_meta);
     }
+
+    Log("Populated VOPS : .mcachefs entry at %llu\n", vops_meta->id);
+    Log("Now Root (%llu,%p) has child (%llu)\n", mdata_root->id, mdata_root, mdata_root->child);
 
     mcachefs_metadata_release(mdata_root);
 }
