@@ -15,6 +15,12 @@
 #endif
 
 #define MCACHEFS_METADATA_MAX_LEVELS 1024
+
+/**
+ * Number of entries to allocate at each call to extend()
+ */
+#define MCACHEFS_METADATA_EXTEND_ALLOC 2048
+
 #define __CLEANUP_HASH(__mdata) do { __mdata->up = __mdata->left = __mdata->right = 0; } while (0)
 
 DIR *
@@ -260,7 +266,7 @@ mcachefs_metadata_extend()
 
     munmap(mcachefs_metadata, mcachefs_metadata_size);
 
-    alloced_nb += 64;
+    alloced_nb += MCACHEFS_METADATA_EXTEND_ALLOC;
 
     if (ftruncate(mcachefs_metadata_fd,
             alloced_nb * sizeof(struct mcachefs_metadata_t)))
@@ -750,6 +756,14 @@ mcachefs_metadata_add_child(struct mcachefs_metadata_t *father,
 
     mcachefs_metadata_build_hash(father, child);
     mcachefs_metadata_insert_hash(child);
+}
+
+void
+mcachefs_metadata_add_child_ids(mcachefs_metadata_id father_id, mcachefs_metadata_id child_id)
+{
+    struct mcachefs_metadata_t* father = mcachefs_metadata_get(father_id);
+    struct mcachefs_metadata_t* child = mcachefs_metadata_get(child_id);
+    mcachefs_metadata_add_child(father, child);
 }
 
 int
@@ -1545,8 +1559,8 @@ mcachefs_metadata_vops_remove_previous(struct mcachefs_metadata_t* mdata_root)
     }
 }
 
-struct mcachefs_metadata_t*
-mcachefs_metadata_vops_create_dir(struct mcachefs_metadata_t* mdata_root)
+mcachefs_metadata_id
+mcachefs_metadata_vops_create_dir(mcachefs_metadata_id root_id)
 {
     mcachefs_metadata_id vops_meta_id = mcachefs_metadata_allocate();
     struct mcachefs_metadata_t* vops_meta = mcachefs_metadata_get(vops_meta_id);
@@ -1556,14 +1570,14 @@ mcachefs_metadata_vops_create_dir(struct mcachefs_metadata_t* mdata_root)
     vops_meta->st.st_uid = getuid();
     vops_meta->st.st_gid = getgid();
     vops_meta->st.st_nlink = 1;
-    mcachefs_metadata_add_child(mdata_root, vops_meta);
+    mcachefs_metadata_add_child_ids(root_id, vops_meta_id);
 
-    return vops_meta;
+    return vops_meta_id;
 }
 
 void
 mcachefs_metadata_vops_create_file(const char* vops_name,
-        struct mcachefs_metadata_t* vops_meta)
+        mcachefs_metadata_id vops_meta_id)
 {
     mcachefs_metadata_id vops_meta_file_id = mcachefs_metadata_allocate();
     struct mcachefs_metadata_t* vops_meta_file = mcachefs_metadata_get(
@@ -1575,7 +1589,7 @@ mcachefs_metadata_vops_create_file(const char* vops_name,
     vops_meta_file->st.st_gid = getgid();
     vops_meta_file->st.st_nlink = 1;
     vops_meta_file->st.st_size = 1 << 20;
-    mcachefs_metadata_add_child(vops_meta, vops_meta_file);
+    mcachefs_metadata_add_child_ids(vops_meta_id, vops_meta_file_id);
 }
 
 /**
@@ -1591,25 +1605,27 @@ mcachefs_metadata_populate_vops()
      * Lookup of children may blur initial mdata_root value
      */
     mcachefs_metadata_get_child(mdata_root);
+
     mdata_root = mcachefs_metadata_get(mdata_root_id);
-
     Log("Root Id is %llu\n", mdata_root->id);
-
     mcachefs_metadata_vops_remove_previous(mdata_root);
     Log("After remove_previous, Root Id is %llu\n", mdata_root->id);
 
-    struct mcachefs_metadata_t* vops_meta = mcachefs_metadata_vops_create_dir(
-            mdata_root);
+    mdata_root = NULL;
+
+    mcachefs_metadata_id vops_meta_id = mcachefs_metadata_vops_create_dir(
+            mdata_root_id);
 
     const char **vops_list;
     for (vops_list = mcachefs_vops_get_vops_list(); *vops_list; vops_list++)
     {
-        mcachefs_metadata_vops_create_file(*vops_list, vops_meta);
+        mcachefs_metadata_vops_create_file(*vops_list, vops_meta_id);
     }
 
-    Log("Populated VOPS : .mcachefs entry at %llu\n", vops_meta->id);
-    Log("Now Root (%llu,%p) has child (%llu)\n", mdata_root->id, mdata_root, mdata_root->child);
+    Log("Populated VOPS : .mcachefs entry at %llu\n", vops_meta_id);
 
+    mdata_root = mcachefs_metadata_get(mdata_root_id);
+    Log("Now Root (%llu,%p) has child (%llu)\n", mdata_root->id, mdata_root, mdata_root->child);
     mcachefs_metadata_release(mdata_root);
 }
 
