@@ -292,21 +292,24 @@ mcachefs_write_file(struct mcachefs_file_t *mfile, const char *buf, size_t size,
     mfile->sources[use_real].nbwr++;
     mfile->sources[use_real].byteswr += bytes;
 
-    mcachefs_file_lock_file(mfile);
     if (!mfile->dirty)
     {
-        /**
-         * We have to append the fsync command on the journal
-         * Do it with no lock on the file to prevent deadlocks
-         */
-        mfile->dirty = 1;
-        mcachefs_file_unlock_file(mfile);
-        mcachefs_journal_append(mcachefs_journal_op_fsync, mfile->path, NULL, 0,
-                0, 0, 0, 0, NULL );
-    }
-    else
-    {
-        mcachefs_file_unlock_file(mfile);
+        mcachefs_file_lock_file(mfile);
+        if (!mfile->dirty)
+        {
+            /**
+             * We have to append the fsync command on the journal
+             * Do it with no lock on the file to prevent deadlocks
+             */
+            mfile->dirty = 1;
+            mcachefs_file_unlock_file(mfile);
+            mcachefs_journal_append(mcachefs_journal_op_fsync, mfile->path,
+                    NULL, 0, 0, 0, 0, 0, NULL );
+        }
+        else
+        {
+            mcachefs_file_unlock_file(mfile);
+        }
     }
 
     mcachefs_file_update_metadata(mfile, offset + size, 1);

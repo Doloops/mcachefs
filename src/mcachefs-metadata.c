@@ -1879,7 +1879,7 @@ static unsigned long mcachefs_dump_mdata_tree_nb = 0;
 static unsigned long mcachefs_dump_mdata_hashtree_nb = 0;
 
 void
-mcachefs_file_dump_meta(struct mcachefs_file_t *mvops,
+mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops,
         struct mcachefs_metadata_t *mdata, int depth)
 {
     mcachefs_dump_mdata_tree_nb++;
@@ -1889,16 +1889,16 @@ mcachefs_file_dump_meta(struct mcachefs_file_t *mvops,
             "%s[%llu] h=%llx : '%s' (c=%llu,n=%llu,f=%llu, ulr=%llu:%llu:%llu), fh=%lx\n", dspace, mdata->id, mdata->hash, mdata->d_name, mdata->child, mdata->next, mdata->father, mdata->up, mdata->left, mdata->right, (unsigned long) mdata->fh);
 
     if (mdata->child && mdata->child != mcachefs_metadata_id_EMPTY)
-        mcachefs_file_dump_meta(mvops, mcachefs_metadata_get(mdata->child),
+        mcachefs_metadata_dump_meta(mvops, mcachefs_metadata_get(mdata->child),
                 depth + 1);
 
     if (mdata->next)
-        mcachefs_file_dump_meta(mvops, mcachefs_metadata_get(mdata->next),
+        mcachefs_metadata_dump_meta(mvops, mcachefs_metadata_get(mdata->next),
                 depth);
 }
 
 void
-mcachefs_file_dump_hash(struct mcachefs_file_t *mvops,
+mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
         struct mcachefs_metadata_t *mdata, int depth, hash_t min, hash_t max)
 {
     mcachefs_dump_mdata_hashtree_nb++;
@@ -1917,13 +1917,13 @@ mcachefs_file_dump_hash(struct mcachefs_file_t *mvops,
     }
 
     if (mdata->left)
-        mcachefs_file_dump_hash(mvops, mcachefs_metadata_get(mdata->left),
+        mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_get(mdata->left),
                 depth + 1, min, mdata->hash - 1);
     if (mdata->right)
-        mcachefs_file_dump_hash(mvops, mcachefs_metadata_get(mdata->right),
+        mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_get(mdata->right),
                 depth + 1, mdata->hash, max);
     if (mdata->collision_next)
-        mcachefs_file_dump_hash(mvops,
+        mcachefs_metadata_dump_hash(mvops,
                 mcachefs_metadata_get(mdata->collision_next), depth,
                 mdata->hash - 1, mdata->hash + 1);
 }
@@ -1939,11 +1939,11 @@ mcachefs_metadata_dump(struct mcachefs_file_t *mvops)
 
     __VOPS_WRITE(mvops,
             "--------------- Metadata tree root=%s -----------------\n", mcachefs_metadata_get_root ()->d_name);
-    mcachefs_file_dump_meta(mvops, mcachefs_metadata_get_root(), 0);
+    mcachefs_metadata_dump_meta(mvops, mcachefs_metadata_get_root(), 0);
 
     __VOPS_WRITE(mvops,
             "--------------- Metadata hash tree root=%s -----------------\n", mcachefs_metadata_get_root ()->d_name);
-    mcachefs_file_dump_hash(mvops, mcachefs_metadata_get_root(), 0, 0,
+    mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_get_root(), 0, 0,
             ~((hash_t) 0));
 
     if (mcachefs_dump_mdata_tree_nb != mcachefs_dump_mdata_hashtree_nb)
