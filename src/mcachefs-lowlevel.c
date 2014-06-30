@@ -680,6 +680,8 @@ mcachefs_statfs (const char *path, struct statvfs *fsinfo)
 static int
 mcachefs_flush(const char *path, struct fuse_file_info *info)
 {
+    (void) path;
+    (void) info;
     Log(
             "[NOT IMPLEMENTED] mcachefs_flush(%s,fh=%lx)\n", path, (unsigned long) info->fh);
     return 0;

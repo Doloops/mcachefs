@@ -44,6 +44,7 @@ mcachefs_metadata_close();
 
 struct mcachefs_metadata_t *
 mcachefs_metadata_get(mcachefs_metadata_id id);
+
 struct mcachefs_metadata_t *
 mcachefs_metadata_get_child(struct mcachefs_metadata_t *father);
 
