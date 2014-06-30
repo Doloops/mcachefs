@@ -32,8 +32,10 @@ typedef unsigned long long int hash_t;
 struct mcachefs_mutex_t
 {
     pthread_mutex_t mutex;
+#ifdef  __MCACHEFS_MUTEX_DEBUG
     pthread_t owner;
     const char *context;
+#endif
 };
 
 struct mcachefs_metadata_t;

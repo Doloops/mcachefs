@@ -21,6 +21,8 @@ void mcachefs_mutex_init (struct mcachefs_mutex_t *mutex);
 void mcachefs_mutex_destroy (struct mcachefs_mutex_t *mutex,
                              const char *name);
 
+#ifdef  __MCACHEFS_MUTEX_DEBUG
+
 void mcachefs_mutex_lock (struct mcachefs_mutex_t *mutex, const char *name,
                           const char *context);
 void mcachefs_mutex_unlock (struct mcachefs_mutex_t *mutex, const char *name,
@@ -29,6 +31,15 @@ void mcachefs_mutex_check_locked (struct mcachefs_mutex_t *mutex,
                                   const char *name, const char *context);
 void mcachefs_mutex_check_unlocked (struct mcachefs_mutex_t *mutex,
                                     const char *name, const char *context);
+
+#else
+
+#define mcachefs_mutex_lock(__mutex,name,context) pthread_mutex_lock(&((__mutex)->mutex))
+#define mcachefs_mutex_unlock(__mutex,name,context) pthread_mutex_unlock(&((__mutex)->mutex))
+#define mcachefs_mutex_check_locked(__mutex,name,context) do{} while(0)
+#define mcachefs_mutex_check_unlocked(__mutex,name,context) do{} while(0)
+
+#endif
 
 extern struct mcachefs_mutex_t mcachefs_metadata_mutex;
 extern struct mcachefs_mutex_t mcachefs_file_mutex;
