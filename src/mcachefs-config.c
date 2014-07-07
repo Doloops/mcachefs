@@ -76,6 +76,7 @@ mcachefs_parse_config(int argc, char* argv[])
     config->write_state = MCACHEFS_WRSTATE_CACHE;
     config->file_thread_interval = 1;
     config->file_ttl = 300;
+    config->metadata_map_ttl = 10;
     config->transfer_max_rate = 100000;
     config->cleanup_cache_age = 30 * 24 * 3600;
     config->cleanup_cache_prefix = NULL;
@@ -334,6 +335,16 @@ mcachefs_config_set_file_ttl(int ttl)
     {
         Err("Invalid value for ttl : %d\n", ttl);
     }
+}
+
+int mcachefs_config_get_metadata_map_ttl ()
+{
+    return current_config->metadata_map_ttl;
+}
+
+void mcachefs_config_set_metadata_map_ttl (int ttl)
+{
+    current_config->metadata_map_ttl = ttl;
 }
 
 int

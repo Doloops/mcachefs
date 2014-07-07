@@ -59,6 +59,8 @@ struct mcachefs_config
 
     int file_ttl;
 
+    int metadata_map_ttl;
+
     int transfer_max_rate;
 
     int cleanup_cache_age;
@@ -114,6 +116,9 @@ void mcachefs_config_set_file_thread_interval (int interval);
 
 int mcachefs_config_get_file_ttl ();
 void mcachefs_config_set_file_ttl (int ttl);
+
+int mcachefs_config_get_metadata_map_ttl ();
+void mcachefs_config_set_metadata_map_ttl (int ttl);
 
 int mcachefs_config_get_transfer_max_rate ();
 void mcachefs_config_set_transfer_max_rate (int rate);

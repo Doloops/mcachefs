@@ -23,7 +23,7 @@
 /**
  * Number of entries to alloc in a single mmap()
  */
-#define MCACHEFS_METADATA_BLOCK_ENTRY_BITS (8)
+#define MCACHEFS_METADATA_BLOCK_ENTRY_BITS (4)
 #define MCACHEFS_METADATA_BLOCK_ENTRY_COUNT ((1 << MCACHEFS_METADATA_BLOCK_ENTRY_BITS))
 #define MCACHEFS_METADATA_BLOCK_ENTRY_MASK (MCACHEFS_METADATA_BLOCK_ENTRY_COUNT - 1)
 
@@ -218,7 +218,7 @@ mcachefs_metadata_mmap_block(mcachefs_metadata_id block)
             block_offset);
     if (rmap == NULL || rmap == MAP_FAILED )
     {
-        Err("Could not open metadata !\n");
+        Err("Could not open metadata ! Err=%d:%s\n", errno, strerror(errno));
         exit(-1);
     }
     Log(
@@ -235,8 +235,8 @@ void
 mcachefs_metadata_release_all()
 {
     time_t now = mcachefs_get_jiffy_sec();
-
-    if (now == mcachefs_metadata_last_release)
+    time_t ttl = (time_t) mcachefs_config_get_metadata_map_ttl();
+    if (mcachefs_metadata_last_release >= now - ttl)
     {
         return;
     }
@@ -245,6 +245,7 @@ mcachefs_metadata_release_all()
     mcachefs_metadata_id nbblocks = mcachefs_metadata_head->alloced_nb
             >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS;
 
+    mcachefs_metadata_id metadata_map_mmap_count_ori = metadata_map_mmap_count;
     mcachefs_metadata_id block;
     for (block = 1; block < nbblocks; block++)
     {
@@ -255,7 +256,7 @@ mcachefs_metadata_release_all()
 
         time_t age = now - metadata_map[block].last_used;
 
-        if (age < 5)
+        if (age < ttl)
         {
             continue;
         }
@@ -271,7 +272,7 @@ mcachefs_metadata_release_all()
 
     }
     Info(
-            "MUnMap : Now count=%llu, total=%llu\n", metadata_map_mmap_count, nbblocks);
+            "MUnMap : Count=%llu->%llu, total=%llu\n", metadata_map_mmap_count_ori, metadata_map_mmap_count, nbblocks);
 }
 
 void
@@ -287,7 +288,7 @@ mcachefs_metadata_open()
     }
 
     Info(
-            "Opening metadata file '%s' (struct metadata=%lu)\n", mcachefs_config_get_metafile(), sizeof(struct mcachefs_metadata_t));
+            "Opening metadata file '%s' (%d entries per metadata block)\n", mcachefs_config_get_metafile(), MCACHEFS_METADATA_BLOCK_ENTRY_COUNT);
 
     struct stat st;
 

@@ -85,6 +85,8 @@ struct mcachefs_vops_proc vops_procs[] =
                 NULL },
         { "file_ttl", &mcachefs_config_get_file_ttl,
                 &mcachefs_config_set_file_ttl, NULL, NULL, NULL, NULL },
+                { "metadata_map_ttl", &mcachefs_config_get_metadata_map_ttl,
+                                &mcachefs_config_set_metadata_map_ttl, NULL, NULL, NULL, NULL },
                 { "transfer_max_rate", &mcachefs_config_get_transfer_max_rate,
                         &mcachefs_config_set_transfer_max_rate, NULL, NULL,
                         NULL, NULL },
