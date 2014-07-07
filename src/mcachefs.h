@@ -47,4 +47,11 @@ extern struct fuse_operations mcachefs_oper;
 
 extern struct stat mcachefs_target_stat;
 
+extern time_t __mcachefs_jiffy_sec;
+
+static inline time_t mcachefs_get_jiffy_sec()
+{
+    return  __mcachefs_jiffy_sec;
+}
+
 #endif // __FUSE_MCACHEFS_H

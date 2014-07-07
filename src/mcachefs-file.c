@@ -13,6 +13,8 @@ struct mcachefs_file_t *mcachefs_file_get (mcachefs_fh_t fdi);
 
 static pthread_t mcachefs_file_threadid = 0;
 
+time_t __mcachefs_jiffy_sec = 0;
+
 void
 mcachefs_file_source_init (struct mcachefs_file_source_t *source)
 {
@@ -511,7 +513,7 @@ mcachefs_file_thread (void *arg)
                  (unsigned long) pthread_self ());
             return NULL;
         }
-
+        time(&__mcachefs_jiffy_sec);
         mcachefs_file_lock ();
 
         // First, we purge the last timeslice in search for files to remove
@@ -522,6 +524,9 @@ mcachefs_file_thread (void *arg)
 
         // Finally, unlock file lock
         mcachefs_file_unlock ();
+
+        mcachefs_metadata_lock();
+        mcachefs_metadata_unlock();
 
         sleep (mcachefs_config_get_file_thread_interval ());
     }

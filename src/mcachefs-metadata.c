@@ -23,14 +23,16 @@
 /**
  * Number of entries to alloc in a single mmap()
  */
-#define MCACHEFS_METADATA_BLOCK_BITS (10)
-#define MCACHEFS_METADATA_BLOCK_SIZE ((1 << MCACHEFS_METADATA_BLOCK_BITS))
-#define MCACHEFS_METADATA_BLOCK_MASK (MCACHEFS_METADATA_BLOCK_SIZE - 1)
+#define MCACHEFS_METADATA_BLOCK_ENTRY_BITS (8)
+#define MCACHEFS_METADATA_BLOCK_ENTRY_COUNT ((1 << MCACHEFS_METADATA_BLOCK_ENTRY_BITS))
+#define MCACHEFS_METADATA_BLOCK_ENTRY_MASK (MCACHEFS_METADATA_BLOCK_ENTRY_COUNT - 1)
 
 /**
  * Size of each metadata entry. Shall be a power of 2 to align on mem blocks
  */
 #define MCACHEFS_METADATA_ENTRY_SIZE ((unsigned long )(1 << 9))
+
+#define MCACHEFS_METADATA_BLOCK_SIZE (MCACHEFS_METADATA_ENTRY_SIZE * MCACHEFS_METADATA_BLOCK_ENTRY_COUNT)
 
 static const char* MCACHEFS_METADATA_MAGIC = "mcachefs.metafile.1c";
 
@@ -52,16 +54,20 @@ static int mcachefs_metadata_fd = -1;
 struct mcachefs_metadata_map_t
 {
     struct mcachefs_metadata_t* map;
+    time_t last_used;
     int use;
 };
 
 struct mcachefs_metadata_map_t* metadata_map = NULL;
+mcachefs_metadata_id metadata_map_mmap_count = 0;
 size_t metadata_map_sz = 0;
 
 /**
  * **************************************** VERY LOW LEVEL *******************************************
  * format, open and close the metafile
  */
+void
+mcachefs_metadata_mmap_block(mcachefs_metadata_id block);
 
 inline static struct mcachefs_metadata_t *
 mcachefs_metadata_do_get(mcachefs_metadata_id id)
@@ -70,7 +76,7 @@ mcachefs_metadata_do_get(mcachefs_metadata_id id)
     {
         return NULL ;
     }
-#if 1 // PARANOID
+#if PARANOID
     mcachefs_metadata_check_locked();
     if (id == mcachefs_metadata_id_EMPTY)
     {
@@ -82,33 +88,19 @@ mcachefs_metadata_do_get(mcachefs_metadata_id id)
                 "Out of reach : id=%llu, alloced_nb=%llu\n", id, mcachefs_metadata_head->alloced_nb);
     }
 #endif
-    unsigned long long block = id >> MCACHEFS_METADATA_BLOCK_BITS;
-    unsigned long block_idx = id & MCACHEFS_METADATA_BLOCK_MASK;
+    mcachefs_metadata_id block = id >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS;
+    unsigned long block_idx = id & MCACHEFS_METADATA_BLOCK_ENTRY_MASK;
 
     if (metadata_map[block].map == NULL )
     {
-        off_t block_size = MCACHEFS_METADATA_ENTRY_SIZE
-                * MCACHEFS_METADATA_BLOCK_SIZE;
-        off_t block_offset = block * block_size;
-        struct mcachefs_metadata_t* rmap = mmap(NULL, block_size,
-                PROT_READ | PROT_WRITE, MAP_SHARED, mcachefs_metadata_fd,
-                block_offset);
-
-        if (rmap == NULL || rmap == MAP_FAILED )
-        {
-            Err("Could not open metadata !\n");
-            exit(-1);
-        }
-        Log(
-                "Malloced block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n", block, block_size, block_offset, rmap, ((long) rmap + (long) block_size));
-        metadata_map[block].map = rmap;
+        mcachefs_metadata_mmap_block(block);
     }
 
+    metadata_map[block].last_used = mcachefs_get_jiffy_sec();
     struct mcachefs_metadata_t* meta =
             (struct mcachefs_metadata_t*) ((unsigned long) metadata_map[block].map
                     + (block_idx * MCACHEFS_METADATA_ENTRY_SIZE ));
 
-    // Log("id=%llu, block=%llu, idx=%lu\n", id, block, block_idx);
     return meta;
 }
 
@@ -145,7 +137,7 @@ mcachefs_metadata_format()
     memset(&mhead, 0, sizeof(mhead));
 
     strcpy(mhead.magic, MCACHEFS_METADATA_MAGIC);
-    mhead.alloced_nb = MCACHEFS_METADATA_BLOCK_SIZE;
+    mhead.alloced_nb = MCACHEFS_METADATA_BLOCK_ENTRY_COUNT;
     mhead.first_free = 2;
 
     Info("Formatting metafile with magic=%s\n", mhead.magic);
@@ -179,7 +171,8 @@ mcachefs_metadata_format()
         exit(-1);
     }
 
-    mcachefs_metadata_extend_free_entries(2, MCACHEFS_METADATA_BLOCK_SIZE);
+    mcachefs_metadata_extend_free_entries(2,
+            MCACHEFS_METADATA_BLOCK_ENTRY_COUNT);
 }
 
 void
@@ -194,48 +187,95 @@ mcachefs_metadata_reset_fh()
         mdata->fh = 0;
     }
 
-    mcachefs_metadata_unlock();
+    mcachefs_metadata_unlock()
+    ;
 }
-
-void
-mcachefs_metadata_populate_vops();
 
 void
 mcachefs_resize_metadata_map()
 {
     unsigned long long nbblocks = mcachefs_metadata_head->alloced_nb
-            >> MCACHEFS_METADATA_BLOCK_BITS;
+            >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS;
     Log(
             "Number of existing blocks : %llu (alloced_nb=%llu), current size=%lu\n", nbblocks, mcachefs_metadata_head->alloced_nb, metadata_map_sz);
     size_t new_map_sz = sizeof(struct mcachefs_metadata_map_t) * nbblocks;
     Log("Realloc from %lu to %lu in size\n", metadata_map_sz, new_map_sz);
-    metadata_map = (struct mcachefs_metadata_map_t*) realloc(metadata_map, new_map_sz);
+    metadata_map = (struct mcachefs_metadata_map_t*) realloc(metadata_map,
+            new_map_sz);
     void* metadata_map_fresh = (void*) ((long) metadata_map
             + (long) metadata_map_sz);
-    Log("Realloced to metadata_map=%p, metadata_map_fresh=%p\n", metadata_map, metadata_map_fresh);
+    Log(
+            "Realloced to metadata_map=%p, metadata_map_fresh=%p\n", metadata_map, metadata_map_fresh);
     memset(metadata_map_fresh, 0, new_map_sz - metadata_map_sz);
     metadata_map_sz = new_map_sz;
 }
+void
+mcachefs_metadata_mmap_block(mcachefs_metadata_id block)
+{
+    off_t block_offset = block * MCACHEFS_METADATA_BLOCK_SIZE;
+    struct mcachefs_metadata_t* rmap = mmap(NULL, MCACHEFS_METADATA_BLOCK_SIZE,
+            PROT_READ | PROT_WRITE, MAP_SHARED, mcachefs_metadata_fd,
+            block_offset);
+    if (rmap == NULL || rmap == MAP_FAILED )
+    {
+        Err("Could not open metadata !\n");
+        exit(-1);
+    }
+    Log(
+            "Malloced block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n", block, block_size, block_offset, rmap, ((long) rmap + (long) block_size));
+    metadata_map[block].map = rmap;
+    metadata_map_mmap_count++;
+    Log(
+            "MMap block %llu, count=%llu, total=%llu\n", block, metadata_map_mmap_count, mcachefs_metadata_head->alloced_nb >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS);
+}
+
+static time_t mcachefs_metadata_last_release = 0;
 
 void
 mcachefs_metadata_release_all()
 {
-    mcachefs_metadata_id nbblocks = mcachefs_metadata_head->alloced_nb
-                >> MCACHEFS_METADATA_BLOCK_BITS;
-    mcachefs_metadata_id block;
-    for ( block = 1 ; block < nbblocks ; block++ )
+    time_t now = mcachefs_get_jiffy_sec();
+
+    if (now == mcachefs_metadata_last_release)
     {
-        off_t block_size = MCACHEFS_METADATA_ENTRY_SIZE
-                * MCACHEFS_METADATA_BLOCK_SIZE;
-        int res = munmap(metadata_map[block].map, block_size);
-        if( res )
+        return;
+    }
+    mcachefs_metadata_last_release = now;
+
+    mcachefs_metadata_id nbblocks = mcachefs_metadata_head->alloced_nb
+            >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS;
+
+    mcachefs_metadata_id block;
+    for (block = 1; block < nbblocks; block++)
+    {
+        if (metadata_map[block].map == NULL )
+        {
+            continue;
+        }
+
+        time_t age = now - metadata_map[block].last_used;
+
+        if (age < 5)
+        {
+            continue;
+        }
+        int res = munmap(metadata_map[block].map, MCACHEFS_METADATA_BLOCK_SIZE);
+        if (res)
         {
             Bug("Could not munmap !");
         }
         metadata_map[block].map = NULL;
+        metadata_map_mmap_count--;
+        Log(
+                "MUnMap block %llu, age=%lu, count=%llu, total=%llu\n", block, age, metadata_map_mmap_count, nbblocks);
+
     }
+    Info(
+            "MUnMap : Now count=%llu, total=%llu\n", metadata_map_mmap_count, nbblocks);
 }
 
+void
+mcachefs_metadata_populate_vops();
 
 void
 mcachefs_metadata_open()
@@ -372,7 +412,8 @@ mcachefs_metadata_flush()
     }
     Info("\tRe-openning '%s'\n", mcachefs_config_get_metafile());
     mcachefs_metadata_open();
-    mcachefs_metadata_unlock ();
+    mcachefs_metadata_unlock ()
+    ;
 }
 
 /**
@@ -484,7 +525,7 @@ mcachefs_metadata_allocate()
         Log("Allocate : alloced_nb=%llu\n", mcachefs_metadata_head->alloced_nb);
         mcachefs_metadata_id first_alloced = mcachefs_metadata_head->alloced_nb;
         mcachefs_metadata_id last_alloced = first_alloced
-                + MCACHEFS_METADATA_BLOCK_SIZE;
+                + MCACHEFS_METADATA_BLOCK_ENTRY_COUNT;
 
         mcachefs_metadata_extend_free_entries(first_alloced, last_alloced);
 
@@ -1222,7 +1263,8 @@ mcachefs_metadata_find(const char *path)
     metadata = mcachefs_metadata_find_locked(path);
 
     if (!metadata)
-        mcachefs_metadata_unlock ();
+        mcachefs_metadata_unlock ()
+        ;
     return metadata;
 }
 
@@ -1230,7 +1272,8 @@ void
 mcachefs_metadata_release(struct mcachefs_metadata_t *mdata)
 {
     (void) mdata;
-    mcachefs_metadata_unlock ();
+    mcachefs_metadata_unlock ()
+    ;
 }
 
 void
@@ -1584,7 +1627,8 @@ mcachefs_metadata_rename_entry(const char *path, const char *to)
 
     if (!mdata)
     {
-        mcachefs_metadata_unlock ();
+        mcachefs_metadata_unlock ()
+        ;
         return -ENOENT;
     }
     if (S_ISDIR (mdata->st.st_mode))
@@ -1601,7 +1645,8 @@ mcachefs_metadata_rename_entry(const char *path, const char *to)
 
     if ((mtarget = mcachefs_metadata_find_locked(to)) != NULL )
     {
-        mcachefs_metadata_unlock ();
+        mcachefs_metadata_unlock ()
+        ;
         return -EEXIST;
     }
 
@@ -1614,12 +1659,14 @@ mcachefs_metadata_rename_entry(const char *path, const char *to)
 
     if (!mtarget)
     {
-        mcachefs_metadata_unlock ();
+        mcachefs_metadata_unlock ()
+        ;
         return -ENOENT;
     }
     if (!S_ISDIR (mtarget->st.st_mode))
     {
-        mcachefs_metadata_unlock ();
+        mcachefs_metadata_unlock ()
+        ;
         return -ENOTDIR;
     }
 
@@ -1650,7 +1697,8 @@ mcachefs_metadata_rename_entry(const char *path, const char *to)
         mcachefs_metadata_update_fh_path(mdata);
     }
 
-    mcachefs_metadata_unlock ();
+    mcachefs_metadata_unlock ()
+    ;
 
     return 0;
 
@@ -1701,7 +1749,8 @@ mcachefs_metadata_find_entry(const char *path)
     }
     if (metadata == NULL )
     {
-        mcachefs_metadata_unlock ();
+        mcachefs_metadata_unlock ()
+        ;
     }
     return metadata;
 }
@@ -1714,7 +1763,8 @@ mcachefs_metadata_flush_entry(const char *path)
     {
         Log("\t=> Found at %llu, hash=%llx\n", metadata->id, metadata->hash);
         mcachefs_metadata_remove_children(metadata);
-        mcachefs_metadata_unlock ();
+        mcachefs_metadata_unlock ()
+        ;
     }
     else
     {
@@ -1957,7 +2007,8 @@ mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile)
 
     int fd = mcachefs_metadata_recurse_open(mdata);
 
-    mcachefs_metadata_unlock ();
+    mcachefs_metadata_unlock ()
+    ;
 
     if (fd == -1)
     {
@@ -2014,7 +2065,8 @@ mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile)
 
     mcachefs_metadata_schedule_fill_child_entries(mdata);
 
-    mcachefs_metadata_unlock ();
+    mcachefs_metadata_unlock ()
+    ;
 }
 
 void
@@ -2027,7 +2079,8 @@ mcachefs_metadata_fill(const char *path)
                 "\tFound '%s' at %llu, hash=%llx\n", path, metadata->id, metadata->hash);
         mcachefs_metadata_schedule_fill_entry(metadata);
         Info("Scheduled metadata fetch for '%s'\n", path);
-        mcachefs_metadata_unlock ();
+        mcachefs_metadata_unlock ()
+        ;
     }
     else
     {
@@ -2148,7 +2201,8 @@ mcachefs_metadata_dump(struct mcachefs_file_t *mvops)
                 "Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_hashtree_nb=%lu\n", mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
     }
 
-    mcachefs_metadata_unlock ();
+    mcachefs_metadata_unlock ()
+    ;
 }
 
 #ifdef __MCACHEFS_METADATA_HAS_SYNC
