@@ -14,6 +14,9 @@
 #include <sys/timeb.h>
 #include <string.h>
 
+void
+mcachefs_metadata_release_all();
+
 /**
  * MCachefs mutex interface, based on pthread_mutex
  */
@@ -50,7 +53,8 @@ extern struct mcachefs_mutex_t mcachefs_transfer_mutex;
 #define mcachefs_metadata_lock() do { \
     mcachefs_file_check_unlocked(); \
     mcachefs_mutex_lock ( &mcachefs_metadata_mutex, "metadata", __CONTEXT ); } while (0)
-#define mcachefs_metadata_unlock() mcachefs_mutex_unlock ( &mcachefs_metadata_mutex, "metadata", __CONTEXT )
+#define mcachefs_metadata_unlock() do { mcachefs_metadata_release_all(); mcachefs_mutex_unlock ( &mcachefs_metadata_mutex, "metadata", __CONTEXT ); }  while(0)
+
 #define mcachefs_metadata_check_locked() mcachefs_mutex_check_locked ( &mcachefs_metadata_mutex, "metadata", __CONTEXT )
 #define mcachefs_metadata_check_unlocked() mcachefs_mutex_check_unlocked ( &mcachefs_metadata_mutex, "metadata", __CONTEXT )
 

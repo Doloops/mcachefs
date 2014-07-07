@@ -18,11 +18,21 @@
 #define MCACHEFS_METADATA_MAX_LEVELS 1024
 
 #define __MCACHEFS_METADATA_HAS_FILLENTRY
+// #define __MCACHEFS_METADATA_HAS_SYNC
 
 /**
- * Number of entries to allocate at each call to extend()
+ * Number of entries to alloc in a single mmap()
  */
-#define MCACHEFS_METADATA_EXTEND_ALLOC 2048
+#define MCACHEFS_METADATA_BLOCK_BITS (10)
+#define MCACHEFS_METADATA_BLOCK_SIZE ((1 << MCACHEFS_METADATA_BLOCK_BITS))
+#define MCACHEFS_METADATA_BLOCK_MASK (MCACHEFS_METADATA_BLOCK_SIZE - 1)
+
+/**
+ * Size of each metadata entry. Shall be a power of 2 to align on mem blocks
+ */
+#define MCACHEFS_METADATA_ENTRY_SIZE ((unsigned long )(1 << 9))
+
+static const char* MCACHEFS_METADATA_MAGIC = "mcachefs.metafile.1c";
 
 DIR *
 fdopendir(int __fd);
@@ -34,12 +44,19 @@ struct mcachefs_metadata_head_t
     mcachefs_metadata_id first_free;
 };
 
-struct mcachefs_metadata_t *mcachefs_metadata = NULL;
-
+static struct mcachefs_metadata_head_t* mcachefs_metadata_head = NULL;
 static const mcachefs_metadata_id mcachefs_metadata_id_root = 1;
 
-int mcachefs_metadata_fd = -1;
-size_t mcachefs_metadata_size = 0;
+static int mcachefs_metadata_fd = -1;
+
+struct mcachefs_metadata_map_t
+{
+    struct mcachefs_metadata_t* map;
+    int use;
+};
+
+struct mcachefs_metadata_map_t* metadata_map = NULL;
+size_t metadata_map_sz = 0;
 
 /**
  * **************************************** VERY LOW LEVEL *******************************************
@@ -53,28 +70,85 @@ mcachefs_metadata_do_get(mcachefs_metadata_id id)
     {
         return NULL ;
     }
-#if PARANOID
+#if 1 // PARANOID
+    mcachefs_metadata_check_locked();
     if (id == mcachefs_metadata_id_EMPTY)
     {
         Bug("Attempt to fetch an EMPTY child !\n");
     }
-    if (id * sizeof(struct mcachefs_metadata_t) >= mcachefs_metadata_size)
+    if (id >= mcachefs_metadata_head->alloced_nb)
     {
-        Bug("Out of bounds : id=%llu\n", id);
+        Bug(
+                "Out of reach : id=%llu, alloced_nb=%llu\n", id, mcachefs_metadata_head->alloced_nb);
     }
 #endif
-    return &(mcachefs_metadata[id]);
+    unsigned long long block = id >> MCACHEFS_METADATA_BLOCK_BITS;
+    unsigned long block_idx = id & MCACHEFS_METADATA_BLOCK_MASK;
+
+    if (metadata_map[block].map == NULL )
+    {
+        off_t block_size = MCACHEFS_METADATA_ENTRY_SIZE
+                * MCACHEFS_METADATA_BLOCK_SIZE;
+        off_t block_offset = block * block_size;
+        struct mcachefs_metadata_t* rmap = mmap(NULL, block_size,
+                PROT_READ | PROT_WRITE, MAP_SHARED, mcachefs_metadata_fd,
+                block_offset);
+
+        if (rmap == NULL || rmap == MAP_FAILED )
+        {
+            Err("Could not open metadata !\n");
+            exit(-1);
+        }
+        Log(
+                "Malloced block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n", block, block_size, block_offset, rmap, ((long) rmap + (long) block_size));
+        metadata_map[block].map = rmap;
+    }
+
+    struct mcachefs_metadata_t* meta =
+            (struct mcachefs_metadata_t*) ((unsigned long) metadata_map[block].map
+                    + (block_idx * MCACHEFS_METADATA_ENTRY_SIZE ));
+
+    // Log("id=%llu, block=%llu, idx=%lu\n", id, block, block_idx);
+    return meta;
+}
+
+void
+mcachefs_metadata_extend_free_entries(mcachefs_metadata_id first,
+        mcachefs_metadata_id last)
+{
+    Log("Formatting entries (first=%llu, last=%llu)\n", first, last);
+
+    struct mcachefs_metadata_t mdata;
+    memset(&mdata, 0, sizeof(struct mcachefs_metadata_t));
+
+    mcachefs_metadata_id nfree;
+    for (nfree = first; nfree < last; nfree++)
+    {
+        mdata.id = nfree;
+        mdata.next = (nfree < last - 1) ? (nfree + 1) : 0;
+
+        int res = pwrite(mcachefs_metadata_fd, &mdata,
+                sizeof(struct mcachefs_metadata_t),
+                MCACHEFS_METADATA_ENTRY_SIZE * nfree);
+        if (res != sizeof(struct mcachefs_metadata_t))
+        {
+            Err("Could not format metafile !");
+            exit(-1);
+        }
+    }
 }
 
 void
 mcachefs_metadata_format()
 {
     struct mcachefs_metadata_head_t mhead;
-
     memset(&mhead, 0, sizeof(mhead));
-    mhead.alloced_nb = 2;
-    mhead.first_free = 0;
-    strcpy(mhead.magic, "mcachefs.metafile.0");
+
+    strcpy(mhead.magic, MCACHEFS_METADATA_MAGIC);
+    mhead.alloced_nb = MCACHEFS_METADATA_BLOCK_SIZE;
+    mhead.first_free = 2;
+
+    Info("Formatting metafile with magic=%s\n", mhead.magic);
 
     int res = pwrite(mcachefs_metadata_fd, &mhead,
             sizeof(struct mcachefs_metadata_head_t), 0);
@@ -98,42 +172,91 @@ mcachefs_metadata_format()
     mdata.st.st_ino = 0;
 
     res = pwrite(mcachefs_metadata_fd, &mdata,
-            sizeof(struct mcachefs_metadata_t),
-            sizeof(struct mcachefs_metadata_t));
+            sizeof(struct mcachefs_metadata_t), MCACHEFS_METADATA_ENTRY_SIZE );
     if (res != sizeof(struct mcachefs_metadata_t))
     {
         Err("Could not format metafile !");
         exit(-1);
     }
+
+    mcachefs_metadata_extend_free_entries(2, MCACHEFS_METADATA_BLOCK_SIZE);
 }
 
 void
 mcachefs_metadata_reset_fh()
 {
+    mcachefs_metadata_lock();
+
     mcachefs_metadata_id id;
-    struct mcachefs_metadata_head_t *mhead;
-    struct mcachefs_metadata_t *mdata;
-
-    mhead = (struct mcachefs_metadata_head_t *) mcachefs_metadata;
-
-    for (id = 1; id < mhead->alloced_nb; id++)
+    for (id = 1; id < mcachefs_metadata_head->alloced_nb; id++)
     {
-        mdata = mcachefs_metadata_do_get(id);
+        struct mcachefs_metadata_t *mdata = mcachefs_metadata_do_get(id);
         mdata->fh = 0;
     }
+
+    mcachefs_metadata_unlock();
 }
 
 void
 mcachefs_metadata_populate_vops();
 
 void
+mcachefs_resize_metadata_map()
+{
+    unsigned long long nbblocks = mcachefs_metadata_head->alloced_nb
+            >> MCACHEFS_METADATA_BLOCK_BITS;
+    Log(
+            "Number of existing blocks : %llu (alloced_nb=%llu), current size=%lu\n", nbblocks, mcachefs_metadata_head->alloced_nb, metadata_map_sz);
+    size_t new_map_sz = sizeof(struct mcachefs_metadata_map_t) * nbblocks;
+    Log("Realloc from %lu to %lu in size\n", metadata_map_sz, new_map_sz);
+    metadata_map = (struct mcachefs_metadata_map_t*) realloc(metadata_map, new_map_sz);
+    void* metadata_map_fresh = (void*) ((long) metadata_map
+            + (long) metadata_map_sz);
+    Log("Realloced to metadata_map=%p, metadata_map_fresh=%p\n", metadata_map, metadata_map_fresh);
+    memset(metadata_map_fresh, 0, new_map_sz - metadata_map_sz);
+    metadata_map_sz = new_map_sz;
+}
+
+void
+mcachefs_metadata_release_all()
+{
+    mcachefs_metadata_id nbblocks = mcachefs_metadata_head->alloced_nb
+                >> MCACHEFS_METADATA_BLOCK_BITS;
+    mcachefs_metadata_id block;
+    for ( block = 1 ; block < nbblocks ; block++ )
+    {
+        off_t block_size = MCACHEFS_METADATA_ENTRY_SIZE
+                * MCACHEFS_METADATA_BLOCK_SIZE;
+        int res = munmap(metadata_map[block].map, block_size);
+        if( res )
+        {
+            Bug("Could not munmap !");
+        }
+        metadata_map[block].map = NULL;
+    }
+}
+
+
+void
 mcachefs_metadata_open()
 {
+    if (MCACHEFS_METADATA_ENTRY_SIZE < (sizeof(struct mcachefs_metadata_t)))
+    {
+        Bug(
+                "Invalid size for MCACHEFS_METADATA_SIZE (%lu), metadata size is (%lu)\n", MCACHEFS_METADATA_ENTRY_SIZE, sizeof(struct mcachefs_metadata_t));
+    }
+
+    Info(
+            "Opening metadata file '%s' (struct metadata=%lu)\n", mcachefs_config_get_metafile(), sizeof(struct mcachefs_metadata_t));
+
     struct stat st;
+
+    int is_valid = 0;
 
     if (stat(mcachefs_config_get_metafile(), &st) == 0 && st.st_size)
     {
         mcachefs_metadata_fd = open(mcachefs_config_get_metafile(), O_RDWR);
+
         if (mcachefs_metadata_fd == -1)
         {
             Err(
@@ -141,7 +264,23 @@ mcachefs_metadata_open()
         }
         Log(
                 "Openned metafile '%s' at fd=%d\n", mcachefs_config_get_metafile(), mcachefs_metadata_fd);
-        mcachefs_metadata_size = st.st_size;
+
+        struct mcachefs_metadata_head_t head;
+        int res = pread(mcachefs_metadata_fd, &head,
+                sizeof(struct mcachefs_metadata_head_t), 0);
+
+        if (res != sizeof(struct mcachefs_metadata_head_t))
+        {
+            Err("Could not read metadata header !");
+        }
+        else if (strcmp(head.magic, MCACHEFS_METADATA_MAGIC))
+        {
+            Err("Invalid magic '%s'\n", head.magic);
+        }
+        else
+        {
+            is_valid = 1;
+        }
     }
     else
     {
@@ -157,7 +296,7 @@ mcachefs_metadata_open()
         exit(-1);
     }
 
-    if (mcachefs_metadata_size == 0)
+    if (!is_valid)
     {
         Log("Formatting metafile.\n");
         mcachefs_metadata_format();
@@ -167,41 +306,42 @@ mcachefs_metadata_open()
             Err("Could not fstat() formatted file.\n");
             exit(-1);
         }
-        mcachefs_metadata_size = st.st_size;
+        is_valid = 1;
     }
     else
     {
-        Log(
-                "Openned file, size=%llu\n", (unsigned long long) mcachefs_metadata_size);
+        Log( "Openned file ok.\n");
     }
 
-    mcachefs_metadata = mmap(NULL, mcachefs_metadata_size,
+    mcachefs_metadata_head = mmap(NULL, MCACHEFS_METADATA_ENTRY_SIZE,
             PROT_READ | PROT_WRITE, MAP_SHARED, mcachefs_metadata_fd, 0);
 
-    if (mcachefs_metadata == NULL || mcachefs_metadata == MAP_FAILED )
+    if (mcachefs_metadata_head == NULL || mcachefs_metadata_head == MAP_FAILED )
     {
         Err("Could not open metadata !\n");
         exit(-1);
     }
-    Log("Openned metafile '%s'\n", mcachefs_config_get_metafile());
+    Log(
+            "Openned metafile '%s', head=%p\n", mcachefs_config_get_metafile(), mcachefs_metadata_head);
 
+    mcachefs_resize_metadata_map();
     mcachefs_metadata_reset_fh();
 
     mcachefs_metadata_populate_vops();
+
 }
 
 void
 mcachefs_metadata_close()
 {
-    if (mcachefs_metadata)
+    if (mcachefs_metadata_head)
     {
-        if (munmap(mcachefs_metadata, mcachefs_metadata_size))
+        if (munmap(mcachefs_metadata_head, MCACHEFS_METADATA_ENTRY_SIZE ))
         {
             Err("Could not munmap : err=%d:%s\n", errno, strerror (errno));
             exit(-1);
         }
-        mcachefs_metadata = NULL;
-        mcachefs_metadata_size = 0;
+        mcachefs_metadata_head = NULL;
     }
     if (mcachefs_metadata_fd != -1)
     {
@@ -214,8 +354,8 @@ void
 mcachefs_metadata_flush()
 {
     Info("Flushing metadata :\n");
-    mcachefs_metadata_lock ()
-    ;
+    mcachefs_metadata_lock ();
+
     Info("\tClosing metadata...\n");
     mcachefs_metadata_close();
     Info("\tTruncating '%s'\n", mcachefs_config_get_metafile());
@@ -242,45 +382,28 @@ mcachefs_metadata_flush()
 struct mcachefs_metadata_t *
 mcachefs_metadata_get(mcachefs_metadata_id id)
 {
+    mcachefs_metadata_check_locked();
     return mcachefs_metadata_do_get(id);
 }
 
 struct mcachefs_metadata_t *
 mcachefs_metadata_get_root()
 {
+    mcachefs_metadata_check_locked();
     return mcachefs_metadata_do_get(mcachefs_metadata_id_root);
 }
 
-void
-mcachefs_metadata_sync()
-{
-    if (mcachefs_metadata == NULL )
-    {
-        Err("Could not sync a NULL metadata !\n");
-        return;
-    }
-    mcachefs_metadata_lock ()
-    ;
-    if (msync(mcachefs_metadata, mcachefs_metadata_size, MS_SYNC))
-    {
-        Err("Could not sync metadata : err=%d:%s\n", errno, strerror (errno));
-        mcachefs_metadata_unlock ();
-        return;
-    }
-    mcachefs_metadata_unlock ();
-    Log("Metadata synced (size=%lu)\n", (unsigned long) mcachefs_metadata_size);
-}
-
+#if 0
 void
 mcachefs_metadata_extend()
 {
     struct mcachefs_metadata_t *metadata_old = mcachefs_metadata;
 
     struct mcachefs_metadata_head_t *head =
-            (struct mcachefs_metadata_head_t *) mcachefs_metadata;
+    (struct mcachefs_metadata_head_t *) mcachefs_metadata;
     struct mcachefs_metadata_t *newmeta;
     mcachefs_metadata_id alloced_nb = head->alloced_nb, first_free =
-            head->alloced_nb;
+    head->alloced_nb;
     mcachefs_metadata_id current;
 
     Log("Could not allocate, now extend file.\n");
@@ -290,7 +413,7 @@ mcachefs_metadata_extend()
     alloced_nb += MCACHEFS_METADATA_EXTEND_ALLOC;
 
     if (ftruncate(mcachefs_metadata_fd,
-            alloced_nb * sizeof(struct mcachefs_metadata_t)))
+                    alloced_nb * sizeof(struct mcachefs_metadata_t)))
     {
         Bug(
                 "Could not ftruncate up to %llu records : err=%d:%s\n", alloced_nb, errno, strerror (errno));
@@ -332,7 +455,7 @@ mcachefs_metadata_id
 mcachefs_metadata_allocate()
 {
     struct mcachefs_metadata_head_t *head =
-            (struct mcachefs_metadata_head_t *) mcachefs_metadata;
+    (struct mcachefs_metadata_head_t *) mcachefs_metadata;
     struct mcachefs_metadata_t *next;
 
     if (!head->first_free)
@@ -352,6 +475,40 @@ mcachefs_metadata_allocate()
 
     return next->id;
 }
+#else
+mcachefs_metadata_id
+mcachefs_metadata_allocate()
+{
+    if (!mcachefs_metadata_head->first_free)
+    {
+        Log("Allocate : alloced_nb=%llu\n", mcachefs_metadata_head->alloced_nb);
+        mcachefs_metadata_id first_alloced = mcachefs_metadata_head->alloced_nb;
+        mcachefs_metadata_id last_alloced = first_alloced
+                + MCACHEFS_METADATA_BLOCK_SIZE;
+
+        mcachefs_metadata_extend_free_entries(first_alloced, last_alloced);
+
+        mcachefs_metadata_head->first_free = first_alloced;
+        mcachefs_metadata_head->alloced_nb = last_alloced;
+
+        Log(
+                "Allocate : first_free=%llu, alloced_nb=%llu\n", mcachefs_metadata_head->first_free, mcachefs_metadata_head->alloced_nb);
+        mcachefs_resize_metadata_map();
+    }
+    struct mcachefs_metadata_t* next = mcachefs_metadata_do_get(
+            mcachefs_metadata_head->first_free);
+    mcachefs_metadata_head->first_free = next->next;
+
+    if (next->id == 0)
+    {
+        Bug("Invalid next !\n");
+    }
+    Log(
+            "Allocate : provided next=%llu, next->next=%llu\n", next->id, next->next);
+
+    return next->id;
+}
+#endif
 
 int
 mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
@@ -627,6 +784,9 @@ mcachefs_metadata_build_hash(struct mcachefs_metadata_t *father,
 }
 
 void
+mcachefs_metadata_update_fh_path(struct mcachefs_metadata_t *mdata);
+
+void
 mcachefs_metadata_rehash_children(struct mcachefs_metadata_t *mdata)
 {
     struct mcachefs_metadata_t *father = NULL;
@@ -768,7 +928,7 @@ mcachefs_metadata_unlink_entry(struct mcachefs_metadata_t *mdata)
 }
 
 void
-mcachefs_metadata_add_child(struct mcachefs_metadata_t *father,
+mcachefs_metadata_do_add_child(struct mcachefs_metadata_t *father,
         struct mcachefs_metadata_t *child)
 {
     child->father = father->id;
@@ -792,7 +952,7 @@ mcachefs_metadata_add_child_ids(mcachefs_metadata_id father_id,
 {
     struct mcachefs_metadata_t* father = mcachefs_metadata_do_get(father_id);
     struct mcachefs_metadata_t* child = mcachefs_metadata_do_get(child_id);
-    mcachefs_metadata_add_child(father, child);
+    mcachefs_metadata_do_add_child(father, child);
 }
 
 int
@@ -823,12 +983,7 @@ mcachefs_metadata_recurse_open(struct mcachefs_metadata_t *father)
 struct mcachefs_metadata_t *
 mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
 {
-    int fd;
-    DIR *dp;
-    struct dirent *de;
-    mcachefs_metadata_id fatherid = father->id, newid;
-
-    struct mcachefs_metadata_t *newmeta = NULL;
+    mcachefs_metadata_id fatherid = father->id;
 
     if (father->child == mcachefs_metadata_id_EMPTY)
     {
@@ -858,14 +1013,14 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
         return NULL ;
     }
 
-    fd = mcachefs_metadata_recurse_open(father);
+    int fd = mcachefs_metadata_recurse_open(father);
     if (fd == -1)
     {
         Err("Could not recurse open !\n");
         return NULL ;
     }
 
-    dp = fdopendir(fd);
+    DIR* dp = fdopendir(fd);
 
     if (dp == NULL )
     {
@@ -874,6 +1029,7 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
         return NULL ;
     }
 
+    struct dirent *de;
     while ((de = readdir(dp)) != NULL )
     {
         Log_M ("de=%p : name=%s, type=%d\n", de, de->d_name, de->d_type);
@@ -894,9 +1050,8 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
         /*
          * Be really carefull, as mcachefs_metadata_allocate blurs the pointers.
          */
-        newid = mcachefs_metadata_allocate();
-        newmeta = mcachefs_metadata_do_get(newid);
-        father = mcachefs_metadata_do_get(fatherid);
+        mcachefs_metadata_id newid = mcachefs_metadata_allocate();
+        struct mcachefs_metadata_t *newmeta = mcachefs_metadata_do_get(newid);
 
         strncpy(newmeta->d_name, de->d_name, NAME_MAX + 1);
 
@@ -907,7 +1062,7 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
         }
         newmeta->st.st_ino = 0;
 
-        mcachefs_metadata_add_child(father, newmeta);
+        mcachefs_metadata_add_child_ids(fatherid, newid);
     }
     closedir(dp);
     close(fd);
@@ -1081,7 +1236,6 @@ mcachefs_metadata_release(struct mcachefs_metadata_t *mdata)
 void
 mcachefs_metadata_remove(struct mcachefs_metadata_t *metadata)
 {
-    struct mcachefs_metadata_head_t *head;
     struct mcachefs_file_t *mfile;
 
     if (metadata->fh)
@@ -1090,14 +1244,12 @@ mcachefs_metadata_remove(struct mcachefs_metadata_t *metadata)
         mfile->metadata_id = 0;
     }
 
-    head = (struct mcachefs_metadata_head_t *) mcachefs_metadata;
-
     mcachefs_metadata_id id = metadata->id;
     memset(metadata, 0, sizeof(struct mcachefs_metadata_t));
     metadata->id = id;
 
-    metadata->next = head->first_free;
-    head->first_free = metadata->id;
+    metadata->next = mcachefs_metadata_head->first_free;
+    mcachefs_metadata_head->first_free = metadata->id;
 }
 
 void
@@ -1400,7 +1552,9 @@ mcachefs_metadata_update_fh_path(struct mcachefs_metadata_t *mdata)
     char *oldpath, *newpath;
 
     if (!mdata->fh)
+    {
         return;
+    }
 
     newpath = mcachefs_metadata_get_path(mdata);
 
@@ -1792,23 +1946,16 @@ mcachefs_metadata_browse_dir(const char *path, int fd, struct stat **pstats,
 void
 mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile)
 {
-    int fd;
-    struct mcachefs_metadata_t *mdata = NULL, *newmeta, *existingmeta;
-    struct stat *stats = NULL;
-    char **names = NULL;
-    int nb = 0, cur;
-    int virgindir = 0;
-
     mcachefs_metadata_id metaid = mfile->metadata_id, newid;
 
     mcachefs_metadata_lock ();
-    mdata = mcachefs_metadata_do_get(metaid);
+    struct mcachefs_metadata_t* mdata = mcachefs_metadata_do_get(metaid);
 
-    virgindir = (mdata->child == 0);
+    int virgindir = (mdata->child == 0);
 
     Log("Fill Entry : mdata='%s', file='%s'\n", mdata->d_name, mfile->path);
 
-    fd = mcachefs_metadata_recurse_open(mdata);
+    int fd = mcachefs_metadata_recurse_open(mdata);
 
     mcachefs_metadata_unlock ();
 
@@ -1818,19 +1965,24 @@ mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile)
         return;
     }
 
-    nb = mcachefs_metadata_browse_dir(mfile->path, fd, &stats, &names);
+    struct stat *stats = NULL;
+    char **names = NULL;
+    int nb = mcachefs_metadata_browse_dir(mfile->path, fd, &stats, &names);
 
     close(fd);
 
     mcachefs_metadata_lock ();
 
     mdata = mcachefs_metadata_do_get(metaid);
+
+    int cur;
     for (cur = 0; cur < nb; cur++)
     {
         Log("At '%s' : inserting '%s'\n", mdata->d_name, names[cur]);
         if (!virgindir)
         {
-            existingmeta = mcachefs_metadata_dir_get_child(mdata, names[cur]);
+            struct mcachefs_metadata_t* existingmeta =
+                    mcachefs_metadata_dir_get_child(mdata, names[cur]);
             if (existingmeta)
             {
                 mcachefs_metadata_compare_entries(mfile->path, names[cur],
@@ -1839,7 +1991,7 @@ mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile)
             }
         }
         newid = mcachefs_metadata_allocate();
-        newmeta = mcachefs_metadata_do_get(newid);
+        struct mcachefs_metadata_t* newmeta = mcachefs_metadata_do_get(newid);
 
         /*
          * mcachefs_metadata_allocate() blurs the existing pointers. reload it.
@@ -1849,7 +2001,7 @@ mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile)
         strcpy(newmeta->d_name, names[cur]);
         free(names[cur]);
         memcpy(&(newmeta->st), &(stats[cur]), sizeof(struct stat));
-        mcachefs_metadata_add_child(mdata, newmeta);
+        mcachefs_metadata_add_child_ids(metaid, newid);
     }
     if (stats)
     {
@@ -1974,8 +2126,7 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
 void
 mcachefs_metadata_dump(struct mcachefs_file_t *mvops)
 {
-    mcachefs_metadata_lock ()
-    ;
+    mcachefs_metadata_lock ();
 
     mcachefs_dump_mdata_tree_nb = 0;
     mcachefs_dump_mdata_hashtree_nb = 0;
@@ -1999,3 +2150,25 @@ mcachefs_metadata_dump(struct mcachefs_file_t *mvops)
 
     mcachefs_metadata_unlock ();
 }
+
+#ifdef __MCACHEFS_METADATA_HAS_SYNC
+void
+mcachefs_metadata_sync()
+{
+    if (mcachefs_metadata == NULL )
+    {
+        Err("Could not sync a NULL metadata !\n");
+        return;
+    }
+    mcachefs_metadata_lock ()
+    ;
+    if (msync(mcachefs_metadata, mcachefs_metadata_size, MS_SYNC))
+    {
+        Err("Could not sync metadata : err=%d:%s\n", errno, strerror (errno));
+        mcachefs_metadata_unlock ();
+        return;
+    }
+    mcachefs_metadata_unlock ();
+    Log("Metadata synced (size=%lu)\n", (unsigned long) mcachefs_metadata_size);
+}
+#endif // __MCACHEFS_METADATA_HAS_SYNC
