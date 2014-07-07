@@ -22,17 +22,22 @@ typedef int
 typedef void
 (*proc_set_int)(int);
 
-typedef void
-(*proc_extern_build)(struct mcachefs_file_t* mvops);
+typedef const char*
+(*proc_get_string)();
 
 typedef void
-(*proc_extern_call)();
+(*proc_set_string)(const char*);
+
+typedef void
+(*proc_extern_build)(struct mcachefs_file_t* mvops);
 
 struct mcachefs_vops_proc
 {
     char* name;
     proc_get_int get_int;
     proc_set_int set_int;
+    proc_get_string get_string;
+    proc_set_string set_string;
     const char** int_string_map;
     proc_extern_build extern_build;
 };
@@ -49,12 +54,17 @@ mcachefs_vops_call_none()
 
 }
 
+typedef void
+(*proc_extern_call)();
+
 static const char* vops_action_names[] =
-    { "none", "apply_journal", "flush_metadata", "cleanup_cache", NULL };
+    { "none", "apply_journal", "flush_metadata", "cleanup_cache",
+            "fill_cache_meta", NULL };
 
 static const proc_extern_call vops_action_calls[] =
     { &mcachefs_vops_call_none, &mcachefs_journal_apply,
-            &mcachefs_metadata_flush, &mcachefs_cleanup_backing, NULL };
+            &mcachefs_metadata_flush, &mcachefs_cleanup_backing,
+            &mcachefs_metadata_fill_meta, NULL };
 
 void
 mcachefs_call_action(int action);
@@ -65,22 +75,33 @@ mcachefs_get_default_action();
 struct mcachefs_vops_proc vops_procs[] =
     {
         { "read_state", &mcachefs_config_get_read_state,
-                &mcachefs_config_set_read_state, read_state_names, NULL },
+                &mcachefs_config_set_read_state, NULL, NULL, read_state_names,
+                NULL },
         { "write_state", &mcachefs_config_get_write_state,
-                &mcachefs_config_set_write_state, write_state_names, NULL },
+                &mcachefs_config_set_write_state, NULL, NULL, write_state_names,
+                NULL },
         { "file_thread_interval", &mcachefs_config_get_file_thread_interval,
-                &mcachefs_config_set_file_thread_interval, NULL, NULL },
+                &mcachefs_config_set_file_thread_interval, NULL, NULL, NULL,
+                NULL },
         { "file_ttl", &mcachefs_config_get_file_ttl,
-                &mcachefs_config_set_file_ttl, NULL, NULL },
-        { "transfer_max_rate", &mcachefs_config_get_transfer_max_rate,
-                &mcachefs_config_set_transfer_max_rate, NULL, NULL },
-        { "transfer", NULL, NULL, NULL, &mcachefs_transfer_dump },
-        { "journal", NULL, NULL, NULL, &mcachefs_journal_dump },
-        { "metadata", NULL, NULL, NULL, &mcachefs_metadata_dump },
-        { "timeslices", NULL, NULL, NULL, &mcachefs_file_timeslices_dump },
-        { "action", &mcachefs_get_default_action, &mcachefs_call_action,
-                vops_action_names, NULL },
-        { NULL, NULL, NULL, NULL, NULL } };
+                &mcachefs_config_set_file_ttl, NULL, NULL, NULL, NULL },
+                { "transfer_max_rate", &mcachefs_config_get_transfer_max_rate,
+                        &mcachefs_config_set_transfer_max_rate, NULL, NULL,
+                        NULL, NULL },
+                { "transfer", NULL, NULL, NULL, NULL, NULL,
+                        &mcachefs_transfer_dump },
+                { "journal", NULL, NULL, NULL, NULL, NULL,
+                        &mcachefs_journal_dump },
+                { "metadata", NULL, NULL, NULL, NULL, NULL,
+                        &mcachefs_metadata_dump },
+                { "timeslices", NULL, NULL, NULL, NULL, NULL,
+                        &mcachefs_file_timeslices_dump },
+                { "cache_prefix", NULL, NULL,
+                        &mcachefs_config_get_cache_prefix,
+                        &mcachefs_config_set_cache_prefix, NULL, NULL },
+                { "action", &mcachefs_get_default_action, &mcachefs_call_action,
+                        NULL, NULL, vops_action_names, NULL },
+                { NULL, NULL, NULL, NULL, NULL, NULL, NULL } };
 
 const char** names = NULL;
 
@@ -157,6 +178,21 @@ vops_build_int(struct mcachefs_file_t* mvops, struct mcachefs_vops_proc* proc)
 }
 
 void
+vops_build_string(struct mcachefs_file_t* mvops,
+        struct mcachefs_vops_proc* proc)
+{
+    const char* value = proc->get_string();
+    if (value != NULL )
+    {
+        __VOPS_WRITE(mvops, "%s\n", value);
+    }
+    else
+    {
+        __VOPS_WRITE(mvops, "\n");
+    }
+}
+
+void
 mcachefs_vops_build(struct mcachefs_file_t *mvops)
 {
     if (mvops->contents)
@@ -181,6 +217,11 @@ mcachefs_vops_build(struct mcachefs_file_t *mvops)
         {
             vops_build_int(mvops, proc);
         }
+        return;
+    }
+    if (proc->get_string != NULL )
+    {
+        vops_build_string(mvops, proc);
         return;
     }
     if (proc->extern_build != NULL )
@@ -232,10 +273,9 @@ vops_parse_int_map(struct mcachefs_file_t* mvops,
 }
 
 void
-vops_parse_int(struct mcachefs_file_t* mvops, struct mcachefs_vops_proc* proc)
+vops_cleanup_first_line(struct mcachefs_file_t* mvops)
 {
     off_t t;
-
     for (t = 0; t < mvops->contents_alloced; t++)
     {
         if (mvops->contents[t] == '\n')
@@ -244,9 +284,23 @@ vops_parse_int(struct mcachefs_file_t* mvops, struct mcachefs_vops_proc* proc)
             break;
         }
     }
+}
+
+void
+vops_parse_int(struct mcachefs_file_t* mvops, struct mcachefs_vops_proc* proc)
+{
+    vops_cleanup_first_line(mvops);
 
     int result = atoi(mvops->contents);
     proc->set_int(result);
+}
+
+void
+vops_parse_string(struct mcachefs_file_t* mvops,
+        struct mcachefs_vops_proc* proc)
+{
+    vops_cleanup_first_line(mvops);
+    proc->set_string(mvops->contents);
 }
 
 void
@@ -268,6 +322,11 @@ mcachefs_vops_parse(struct mcachefs_file_t *mvops)
         {
             vops_parse_int(mvops, proc);
         }
+        return;
+    }
+    if (proc->set_string != NULL )
+    {
+        vops_parse_string(mvops, proc);
         return;
     }
 }

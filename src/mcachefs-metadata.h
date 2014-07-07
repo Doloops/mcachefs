@@ -59,10 +59,6 @@ void
 mcachefs_metadata_flush();
 void
 mcachefs_metadata_flush_entry(const char *path);
-void
-mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile);
-void
-mcachefs_metadata_fill(const char *path);
 
 int
 mcachefs_metadata_getattr(const char *path, struct stat *stbuf);
@@ -93,5 +89,12 @@ mcachefs_metadata_get_path(struct mcachefs_metadata_t *mdata);
  */
 void
 mcachefs_metadata_update_fh_path(struct mcachefs_metadata_t *mdata);
+
+void
+mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile);
+
+void
+mcachefs_metadata_fill_meta();
+
 
 #endif /* MCACHEFSMETADATA_H_ */

@@ -79,6 +79,7 @@ mcachefs_parse_config(int argc, char* argv[])
     config->transfer_max_rate = 100000;
     config->cleanup_cache_age = 30 * 24 * 3600;
     config->cleanup_cache_prefix = NULL;
+    config->cache_prefix = strdup("/");
 
     config->fuse_args.argc = argc;
     config->fuse_args.argv = argv;
@@ -358,3 +359,32 @@ mcachefs_config_get_cleanup_cache_prefix()
 {
     return current_config->cleanup_cache_prefix;
 }
+
+const char* mcachefs_config_get_cache_prefix()
+{
+    return current_config->cache_prefix;
+}
+
+void mcachefs_config_set_cache_prefix(const char* prefix)
+{
+    if ( prefix == NULL )
+    {
+        return;
+    }
+    if ( current_config->cache_prefix )
+    {
+        free(current_config->cache_prefix);
+    }
+    const char* mp = mcachefs_config_get_mountpoint();
+    int mp_len = strlen(mp);
+    if ( strncmp(prefix, mp, mp_len) == 0)
+    {
+        Log("Provided prefix '%s' is based on root mountpoint '%s', removing mp prefix\n", prefix, mp);
+        prefix = prefix + mp_len;
+    }
+    Log("Setting cache_prefix to %s\n", prefix);
+    current_config->cache_prefix = strdup(prefix);
+
+    trim_last_separator(current_config->cache_prefix);
+}
+

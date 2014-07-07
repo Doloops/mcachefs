@@ -63,6 +63,8 @@ struct mcachefs_config
 
     int cleanup_cache_age;
 
+    char* cache_prefix;
+
     char* cleanup_cache_prefix;
 };
 
@@ -121,5 +123,8 @@ void mcachefs_config_set_transfer_max_rate (int rate);
  */
 int mcachefs_config_get_cleanup_cache_age ();
 const char *mcachefs_config_get_cleanup_cache_prefix ();
+
+const char* mcachefs_config_get_cache_prefix();
+void mcachefs_config_set_cache_prefix(const char* prefix);
 
 #endif // __MCACHEFS_CONFIG_H

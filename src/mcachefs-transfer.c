@@ -378,14 +378,6 @@ mcachefs_transfer_get_next_file_to_back_locked (int type)
     }
     free (transfer);
 
-//  transfer = mcachefs_transfer_queue_head->next;
-//  mfile = mcachefs_transfer_queue_head->mfile;
-//  free(mcachefs_transfer_queue_head);
-//
-//  mcachefs_transfer_queue_head = transfer;
-//  if (!mcachefs_transfer_queue_head)
-//    mcachefs_transfer_queue_tail = NULL;
-
     return mfile;
 }
 

@@ -701,7 +701,6 @@ mcachefs_init(struct fuse_conn_info *conn)
     return NULL ;
 }
 
-// static void mcachefs_destroy(struct fuse_conn_info *conn)
 static void
 mcachefs_destroy(void *conn)
 {
