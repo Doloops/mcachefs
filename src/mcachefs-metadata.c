@@ -23,7 +23,7 @@
 /**
  * Number of entries to alloc in a single mmap()
  */
-#define MCACHEFS_METADATA_BLOCK_ENTRY_BITS (4)
+#define MCACHEFS_METADATA_BLOCK_ENTRY_BITS (8)
 #define MCACHEFS_METADATA_BLOCK_ENTRY_COUNT ((1 << MCACHEFS_METADATA_BLOCK_ENTRY_BITS))
 #define MCACHEFS_METADATA_BLOCK_ENTRY_MASK (MCACHEFS_METADATA_BLOCK_ENTRY_COUNT - 1)
 
@@ -196,10 +196,10 @@ mcachefs_resize_metadata_map()
 {
     unsigned long long nbblocks = mcachefs_metadata_head->alloced_nb
             >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS;
-    Log(
-            "Number of existing blocks : %llu (alloced_nb=%llu), current size=%lu\n", nbblocks, mcachefs_metadata_head->alloced_nb, metadata_map_sz);
+    Log("Number of existing blocks : %llu (alloced_nb=%llu), current size=%lu\n", nbblocks, mcachefs_metadata_head->alloced_nb, 
+	(unsigned long) metadata_map_sz);
     size_t new_map_sz = sizeof(struct mcachefs_metadata_map_t) * nbblocks;
-    Log("Realloc from %lu to %lu in size\n", metadata_map_sz, new_map_sz);
+    Log("Realloc from %lu to %lu in size\n", (unsigned long) metadata_map_sz, (unsigned long) new_map_sz);
     metadata_map = (struct mcachefs_metadata_map_t*) realloc(metadata_map,
             new_map_sz);
     void* metadata_map_fresh = (void*) ((long) metadata_map
@@ -213,6 +213,7 @@ void
 mcachefs_metadata_mmap_block(mcachefs_metadata_id block)
 {
     off_t block_offset = block * MCACHEFS_METADATA_BLOCK_SIZE;
+    Log( "MMapping block=%llu, block_offset=%lu\n", block, (unsigned long) block_offset);
     struct mcachefs_metadata_t* rmap = mmap(NULL, MCACHEFS_METADATA_BLOCK_SIZE,
             PROT_READ | PROT_WRITE, MAP_SHARED, mcachefs_metadata_fd,
             block_offset);
@@ -221,12 +222,10 @@ mcachefs_metadata_mmap_block(mcachefs_metadata_id block)
         Err("Could not open metadata ! Err=%d:%s\n", errno, strerror(errno));
         exit(-1);
     }
-    Log(
-            "Malloced block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n", block, block_size, block_offset, rmap, ((long) rmap + (long) block_size));
+   Log( "MMapped block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n", block, MCACHEFS_METADATA_BLOCK_SIZE, (unsigned long) block_offset, rmap, ((long) rmap + (long) MCACHEFS_METADATA_BLOCK_SIZE));
     metadata_map[block].map = rmap;
     metadata_map_mmap_count++;
-    Log(
-            "MMap block %llu, count=%llu, total=%llu\n", block, metadata_map_mmap_count, mcachefs_metadata_head->alloced_nb >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS);
+    // Log("MMap block %llu, count=%llu, total=%llu\n", block, metadata_map_mmap_count, mcachefs_metadata_head->alloced_nb >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS);
 }
 
 static time_t mcachefs_metadata_last_release = 0;
@@ -271,7 +270,7 @@ mcachefs_metadata_release_all()
                 "MUnMap block %llu, age=%lu, count=%llu, total=%llu\n", block, age, metadata_map_mmap_count, nbblocks);
 
     }
-    Info(
+    Log(
             "MUnMap : Count=%llu->%llu, total=%llu\n", metadata_map_mmap_count_ori, metadata_map_mmap_count, nbblocks);
 }
 
@@ -284,7 +283,7 @@ mcachefs_metadata_open()
     if (MCACHEFS_METADATA_ENTRY_SIZE < (sizeof(struct mcachefs_metadata_t)))
     {
         Bug(
-                "Invalid size for MCACHEFS_METADATA_SIZE (%lu), metadata size is (%lu)\n", MCACHEFS_METADATA_ENTRY_SIZE, sizeof(struct mcachefs_metadata_t));
+                "Invalid size for MCACHEFS_METADATA_SIZE (%lu), metadata size is (%lu)\n", MCACHEFS_METADATA_ENTRY_SIZE, (unsigned long) sizeof(struct mcachefs_metadata_t));
     }
 
     Info(

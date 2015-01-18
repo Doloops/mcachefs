@@ -7,7 +7,7 @@ CC = gcc
 
 # CFLAGS += -g -O0
 # CFLAGS += -O0 -pg -g -DDEBUG -D__MCACHEFS_MUTEX_DEBUG 
-CFLAGS += -O3 -pg
+CFLAGS += -O3
 CFLAGS += -I. -I. -I/usr/include/fuse -Wall -W -D_FILE_OFFSET_BITS=64
 LCFLAGS += -ldl -lpthread -lrt -lfuse
 

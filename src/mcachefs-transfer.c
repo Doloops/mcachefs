@@ -493,16 +493,22 @@ mcachefs_transfer_do_writeback (struct mcachefs_file_t *mfile,
 
     realpath = mcachefs_makepath_source (mfile->path);
     if (!realpath)
+    {
         Bug ("OOM.\n");
+    }
     if (stat (realpath, &realstat) == 0)
     {
         if (realstat.st_mtime >= timbuf->modtime && realstat.st_size
             == mfile->transfer.total_size)
         {
-            Info ("Will not write back file '%s' : real file seems fresher, and both have same size !\n", mfile->path);
             free (realpath);
+#ifdef __MCACHEFS_TRANSFER_SKIP_FRESHER_SAME_SIZE
+            Info ("Will not write back file '%s' : real file seems fresher, and both have same size !\n", mfile->path);
             mcachefs_notify_sync_end (mfile->path, 1);
             return;
+#else
+            Info ("File '%s' : real file seems fresher, and both have same size, but sync anyway !\n", mfile->path);
+#endif
         }
         Log ("Will write back : real mtime=%lu, real size=%lu, metatstat mtime=%lu, metastat size=%lu\n", 
                 realstat.st_mtime, (unsigned long) realstat.st_size, timbuf->modtime, (unsigned long) mfile->transfer.total_size);
