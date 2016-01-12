@@ -30,40 +30,26 @@ INSTALLING :
 USING :
 -------
 
-mcachefs looks for a config file to determine where the target and backing
-filesystems are located, as well as a debugging verbosity level. mcachefs
-looks in the following locations for it's config file (in this order):
+mcachefs used to look for a config file to determine where the target and
+backing filesystems were located, but these days are over.
 
-    * /etc/mcachefs
-    * ~/.mcachefs
-    * `pwd`/mcachefs.cfg 
+Now all settings must be provided using command-line arguments. mcachefs
+requires at least two arguments : the source and the mountpoint.
 
-Each line of the config file starts by the prefix of the mount point, plus
-the corresponding configuration setting. 
+Let's say you want to mirror dir /media/input to /media/output.
+Just call :
+mcachefs /media/input /media/output
 
-For example, with a mount point prefix set to '/mnt/cache' :
-
-/mnt/cache/backing  /backing
-/mnt/cache/target   /
-/mnt/cache/metafile /tmp/root.metafile.mcachefs
-/mnt/cache/journal  /tmp/root.journal.mcachefs
-/mnt/cache/verbose  99
-
-Note that the two columns must be separated by tabs for the config file to
-parse properly. This config section above says that we have a cached
-filesystem to mount at /mnt/cache. The backing store is /backing, the target
-store is /, and we set the paths for the metafile and the journal.
-
-We want to be _very_ verbose. Lower numbers are less verbose. Please note 
-that being very verbose might help with debugging mcachefs, but _will_ slow
-down the filesystem.
-
-You can now mount the cached filesystem but doing a:
-
-	mcachefs /mnt/cache
-
+Extra fuse-like arguments are : 
+cache the directory where cached files are stored
+metafile the absolute path to store the metadata file (dir structure, 
+  file names, ...) in cache
+journal the absolute path to the journal file
+verbose the level of verbosity (integer) : 0 enables log, -1 disables it
+  (not yet supported)
+  
 This program wont terminate... If you kill it, the filesystem will unmount in 
-a bad way. Don't do that. Use umount instead.
+a bad way. Don't do that. Use umount instead, or fusermount -u /your/moinpoint
 
 RUN-TIME INTERFACE (VOPS) :
 ---------------------------
