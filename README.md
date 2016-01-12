@@ -38,7 +38,9 @@ requires at least two arguments : the source and the mountpoint.
 
 Let's say you want to mirror dir /media/input to /media/output.
 Just call :
+```
 mcachefs /media/input /media/output
+```
 
 Extra fuse-like arguments are : 
 * cache :
