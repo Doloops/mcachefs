@@ -41,11 +41,12 @@ Just call :
 mcachefs /media/input /media/output
 
 Extra fuse-like arguments are : 
-cache the directory where cached files are stored
-metafile the absolute path to store the metadata file (dir structure, 
-  file names, ...) in cache
-journal the absolute path to the journal file
-verbose the level of verbosity (integer) : 0 enables log, -1 disables it
+* cache :
+  the directory where cached files are stored
+* metafile :
+ the absolute path to store the metadata file (dir structure, file names, ...) in cache
+* journal : the absolute path to the journal file
+* verbose : the level of verbosity (integer) : 0 enables log, -1 disables it
   (not yet supported)
   
 This program wont terminate... If you kill it, the filesystem will unmount in 
