@@ -546,8 +546,7 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
 
     while (1)
     {
-        Log(
-                "Equals : mdata=%p:%s (father=%llu), path=%s, path_size=%d\n", mdata, mdata->d_name, mdata->father, path, path_size);
+        Log("Equals : mdata=%p:%s (father=%llu), path=%s, path_size=%d\n", mdata, mdata->d_name, mdata->father, path, path_size);
 
         if (path_size <= 1)
             return mdata->father == 0;
@@ -561,8 +560,7 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
         if (strncmp(mdata->d_name, &(path[path_start + 1]),
                 path_size - path_start - 1))
         {
-            Log(
-                    "Colliding : mdata=%s, rpath=%s (up to %d)\n", mdata->d_name, &(path[path_start + 1]), path_size - path_start - 1);
+            Log("Colliding : mdata=%s, rpath=%s (up to %d)\n", mdata->d_name, &(path[path_start + 1]), path_size - path_start - 1);
             return 0;
         }
 
@@ -773,13 +771,11 @@ mcachefs_metadata_find_hash(const char *path, hash_t hash, int path_size)
 {
     struct mcachefs_metadata_t *current = mcachefs_metadata_get_root();
 
-    Log(
-            "Finding hash for '%s' (up to %d chars) : hash=%llx \n", path, path_size, hash);
+    Log("Finding hash for '%s' (up to %d chars) : hash=%llx \n", path, path_size, hash);
 
     while (current)
     {
-        Log(
-                "At current=%p (%s), hash=%llx\n", current, current->d_name, current->hash);
+        Log("At current=%p (%s), hash=%llx\n", current, current->d_name, current->hash);
         if (hash < current->hash)
         {
             current = mcachefs_metadata_do_get(current->left);
@@ -795,8 +791,7 @@ mcachefs_metadata_find_hash(const char *path, hash_t hash, int path_size)
         {
             return current;
         }
-        Log(
-                "Got a collision with current=%llu:'%s' (hash=%llx), path=%s, hash=%llx!\n", current->id, current->d_name, current->hash, path, hash);
+        Log("Got a collision with current=%llu:'%s' (hash=%llx), path=%s, hash=%llx!\n", current->id, current->d_name, current->hash, path, hash);
         current = mcachefs_metadata_do_get(current->collision_next);
     }
     return NULL ;
@@ -806,8 +801,7 @@ void
 mcachefs_metadata_build_hash(struct mcachefs_metadata_t *father,
         struct mcachefs_metadata_t *child)
 {
-    child->hash =
-            father->father ? continueHash(father->hash, "/") : father->hash;
+    child->hash = father->father ? continueHash(father->hash, "/") : father->hash;
     child->hash = continueHash(child->hash, child->d_name);
 }
 
