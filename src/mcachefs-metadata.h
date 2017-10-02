@@ -39,6 +39,7 @@ struct mcachefs_metadata_t
 
 void
 mcachefs_metadata_open();
+
 void
 mcachefs_metadata_close();
 
@@ -49,7 +50,7 @@ void
 mcachefs_metadata_release(struct mcachefs_metadata_t *mdata); // Releases mcachefs_metadata_lock
 
 void
-mcachefs_metadata_release_all();
+mcachefs_metadata_release_all(int forceUnmap);
 
 struct mcachefs_metadata_t *
 mcachefs_metadata_get_child(struct mcachefs_metadata_t *father);
@@ -96,5 +97,10 @@ mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile);
 void
 mcachefs_metadata_fill_meta();
 
+/**
+ * Populate metadata files with vops
+ */
+void
+mcachefs_metadata_populate_vops();
 
 #endif /* MCACHEFSMETADATA_H_ */

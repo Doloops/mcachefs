@@ -178,7 +178,7 @@ mcachefs_metadata_format()
 void
 mcachefs_metadata_reset_fh()
 {
-    mcachefs_metadata_lock();
+	mcachefs_metadata_check_locked();
 
     mcachefs_metadata_id id;
     for (id = 1; id < mcachefs_metadata_head->alloced_nb; id++)
@@ -186,9 +186,6 @@ mcachefs_metadata_reset_fh()
         struct mcachefs_metadata_t *mdata = mcachefs_metadata_do_get(id);
         mdata->fh = 0;
     }
-
-    mcachefs_metadata_unlock()
-    ;
 }
 
 void
@@ -204,11 +201,11 @@ mcachefs_resize_metadata_map()
             new_map_sz);
     void* metadata_map_fresh = (void*) ((long) metadata_map
             + (long) metadata_map_sz);
-    Log(
-            "Realloced to metadata_map=%p, metadata_map_fresh=%p\n", metadata_map, metadata_map_fresh);
+    Log("Realloced to metadata_map=%p, metadata_map_fresh=%p\n", metadata_map, metadata_map_fresh);
     memset(metadata_map_fresh, 0, new_map_sz - metadata_map_sz);
     metadata_map_sz = new_map_sz;
 }
+
 void
 mcachefs_metadata_mmap_block(mcachefs_metadata_id block)
 {
@@ -222,7 +219,8 @@ mcachefs_metadata_mmap_block(mcachefs_metadata_id block)
         Err("Could not open metadata ! Err=%d:%s\n", errno, strerror(errno));
         exit(-1);
     }
-   Log( "MMapped block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n", block, MCACHEFS_METADATA_BLOCK_SIZE, (unsigned long) block_offset, rmap, ((long) rmap + (long) MCACHEFS_METADATA_BLOCK_SIZE));
+    Log("MMapped block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n", 
+    	block, MCACHEFS_METADATA_BLOCK_SIZE, (unsigned long) block_offset, rmap, ((long) rmap + (long) MCACHEFS_METADATA_BLOCK_SIZE));
     metadata_map[block].map = rmap;
     metadata_map_mmap_count++;
     // Log("MMap block %llu, count=%llu, total=%llu\n", block, metadata_map_mmap_count, mcachefs_metadata_head->alloced_nb >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS);
@@ -231,12 +229,13 @@ mcachefs_metadata_mmap_block(mcachefs_metadata_id block)
 static time_t mcachefs_metadata_last_release = 0;
 
 void
-mcachefs_metadata_release_all()
+mcachefs_metadata_release_all(int forceUnmap)
 {
     time_t now = mcachefs_get_jiffy_sec();
     time_t ttl = (time_t) mcachefs_config_get_metadata_map_ttl();
-    if (mcachefs_metadata_last_release >= now - ttl)
+    if ((!forceUnmap) && mcachefs_metadata_last_release >= now - ttl)
     {
+    	Log("Nothing to do here, exiting...");
         return;
     }
     mcachefs_metadata_last_release = now;
@@ -246,7 +245,7 @@ mcachefs_metadata_release_all()
 
     mcachefs_metadata_id metadata_map_mmap_count_ori = metadata_map_mmap_count;
     mcachefs_metadata_id block;
-    for (block = 1; block < nbblocks; block++)
+    for (block = 0; block < nbblocks; block++)
     {
         if (metadata_map[block].map == NULL )
         {
@@ -255,7 +254,7 @@ mcachefs_metadata_release_all()
 
         time_t age = now - metadata_map[block].last_used;
 
-        if (age < ttl)
+        if ( (!forceUnmap) && age < ttl)
         {
             continue;
         }
@@ -266,28 +265,22 @@ mcachefs_metadata_release_all()
         }
         metadata_map[block].map = NULL;
         metadata_map_mmap_count--;
-        Log(
-                "MUnMap block %llu, age=%lu, count=%llu, total=%llu\n", block, age, metadata_map_mmap_count, nbblocks);
-
+        Log("MUnMap block %llu, age=%lu, count=%llu, total=%llu\n", block, age, metadata_map_mmap_count, nbblocks);
     }
-    Log(
-            "MUnMap : Count=%llu->%llu, total=%llu\n", metadata_map_mmap_count_ori, metadata_map_mmap_count, nbblocks);
+    Log("MUnMap : Count=%llu->%llu, total=%llu\n", metadata_map_mmap_count_ori, metadata_map_mmap_count, nbblocks);
 }
-
-void
-mcachefs_metadata_populate_vops();
 
 void
 mcachefs_metadata_open()
 {
+	mcachefs_metadata_check_locked();
     if (MCACHEFS_METADATA_ENTRY_SIZE < (sizeof(struct mcachefs_metadata_t)))
     {
-        Bug(
-                "Invalid size for MCACHEFS_METADATA_SIZE (%lu), metadata size is (%lu)\n", MCACHEFS_METADATA_ENTRY_SIZE, (unsigned long) sizeof(struct mcachefs_metadata_t));
+        Bug("Invalid size for MCACHEFS_METADATA_SIZE (%lu), metadata size is (%lu)\n",
+        		MCACHEFS_METADATA_ENTRY_SIZE, (unsigned long) sizeof(struct mcachefs_metadata_t));
     }
 
-    Info(
-            "Opening metadata file '%s' (%d entries per metadata block)\n", mcachefs_config_get_metafile(), MCACHEFS_METADATA_BLOCK_ENTRY_COUNT);
+    Info("Opening metadata file '%s' (%d entries per metadata block)\n", mcachefs_config_get_metafile(), MCACHEFS_METADATA_BLOCK_ENTRY_COUNT);
 
     struct stat st;
 
@@ -299,11 +292,9 @@ mcachefs_metadata_open()
 
         if (mcachefs_metadata_fd == -1)
         {
-            Err(
-                    "Could not open '%s' : err=%d:%s\n", mcachefs_config_get_metafile(), errno, strerror (errno));
+            Err("Could not open '%s' : err=%d:%s\n", mcachefs_config_get_metafile(), errno, strerror (errno));
         }
-        Log(
-                "Openned metafile '%s' at fd=%d\n", mcachefs_config_get_metafile(), mcachefs_metadata_fd);
+        Log("Opened metafile '%s' at fd=%d\n", mcachefs_config_get_metafile(), mcachefs_metadata_fd);
 
         struct mcachefs_metadata_head_t head;
         int res = pread(mcachefs_metadata_fd, &head,
@@ -361,19 +352,17 @@ mcachefs_metadata_open()
         Err("Could not open metadata !\n");
         exit(-1);
     }
-    Log(
-            "Openned metafile '%s', head=%p\n", mcachefs_config_get_metafile(), mcachefs_metadata_head);
+    Log("Openned metafile '%s', head=%p\n", mcachefs_config_get_metafile(), mcachefs_metadata_head);
 
     mcachefs_resize_metadata_map();
     mcachefs_metadata_reset_fh();
-
-    mcachefs_metadata_populate_vops();
-
 }
 
 void
 mcachefs_metadata_close()
 {
+	mcachefs_metadata_check_locked();
+    mcachefs_metadata_release_all(1);
     if (mcachefs_metadata_head)
     {
         if (munmap(mcachefs_metadata_head, MCACHEFS_METADATA_ENTRY_SIZE ))
@@ -401,19 +390,18 @@ mcachefs_metadata_flush()
     Info("\tTruncating '%s'\n", mcachefs_config_get_metafile());
     if (truncate(mcachefs_config_get_metafile(), 0))
     {
-        Err(
-                "Could not truncate '%s' : %d:%s\n", mcachefs_config_get_metafile(), errno, strerror (errno));
+        Err("Could not truncate '%s' : %d:%s\n", mcachefs_config_get_metafile(), errno, strerror (errno));
     }
     Info("\tUnlinking '%s'\n", mcachefs_config_get_metafile());
     if (unlink(mcachefs_config_get_metafile()))
     {
-        Err(
-                "Could not unlink '%s' : %d:%s\n", mcachefs_config_get_metafile(), errno, strerror (errno));
+        Err("Could not unlink '%s' : %d:%s\n", mcachefs_config_get_metafile(), errno, strerror (errno));
     }
     Info("\tRe-openning '%s'\n", mcachefs_config_get_metafile());
     mcachefs_metadata_open();
-    mcachefs_metadata_unlock ()
-    ;
+    mcachefs_metadata_unlock();
+
+    mcachefs_metadata_populate_vops();
 }
 
 /**
@@ -1834,6 +1822,8 @@ mcachefs_metadata_vops_create_file(const char* vops_name,
 void
 mcachefs_metadata_populate_vops()
 {
+	mcachefs_metadata_check_unlocked();
+
     struct mcachefs_metadata_t* mdata_root = mcachefs_metadata_find("/");
     mcachefs_metadata_id mdata_root_id = mdata_root->id;
 
@@ -2195,10 +2185,8 @@ mcachefs_metadata_dump(struct mcachefs_file_t *mvops)
 
     if (mcachefs_dump_mdata_tree_nb != mcachefs_dump_mdata_hashtree_nb)
     {
-        Err(
-                "Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_tree_nb=%lu\n", mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
-        __VOPS_WRITE(mvops,
-                "Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_hashtree_nb=%lu\n", mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
+        Err("Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_tree_nb=%lu\n", mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
+        __VOPS_WRITE(mvops, "Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_hashtree_nb=%lu\n", mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
     }
 
     mcachefs_metadata_unlock ()

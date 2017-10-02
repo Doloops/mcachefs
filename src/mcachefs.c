@@ -35,7 +35,12 @@ main (int argc, char *argv[])
 
     mcachefs_file_timeslice_init_variables ();
 
+
+    mcachefs_metadata_lock();
     mcachefs_metadata_open ();
+    mcachefs_metadata_unlock();
+
+    mcachefs_metadata_populate_vops();
 
 #ifdef MCACHEFS_DISABLE_WRITE
     Info ("Serving read-only !\n");
