@@ -68,3 +68,24 @@ function compare_files_different() {
     fi
     echo [OK] Files $FILE1 and $FILE2 are different
 }
+
+function check_file_notexists() {
+    FILE=$1
+    if [ -r "$FILE" ] ; then
+        echo "[ERR] $FILE should not exist !"
+        exit 1
+    else
+        echo "[OK] $FILE does not exist."
+    fi
+}
+
+function check_file_exists() {
+    FILE=$1
+    if [ -r "$FILE" ] ; then
+        echo "[OK] $FILE does exist."
+    else
+        echo "[ERR] $FILE should exist !"
+        exit 1
+    fi
+}
+

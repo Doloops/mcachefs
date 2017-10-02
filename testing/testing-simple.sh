@@ -25,6 +25,17 @@ echo apply_journal > $LOCAL/.mcachefs/action
 sleep 1
 compare_files $TARGET/file1 $LOCAL/file1
 
+echo "Contents of local :"
+ls -lh $LOCAL/*
+
+echo "Another file appears !" > $TARGET/file3
+
+check_file_notexists $LOCAL/file3
+
+echo flush_metadata > $LOCAL/.mcachefs/action
+sleep 1
+
+check_file_exists $LOCAL/file3
 
 echo "[OK] All tests OK!"
 
