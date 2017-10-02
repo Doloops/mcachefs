@@ -26,6 +26,11 @@ main (int argc, char *argv[])
     
     config = mcachefs_parse_config(argc, argv);
     
+    if ( config == NULL )
+    {
+    	return 1;
+    }
+
     mcachefs_set_current_config(config);
 
     mcachefs_file_timeslice_init_variables ();
