@@ -204,7 +204,10 @@ check_file_dir_exists(const char* cpath)
     char* path = strdup(cpath);
     path = dirname(path);
     check_dir_exists(path);
-    free(path);
+    if ( strncmp(path, ".", 2) != 0 )
+    {
+    	free(path);
+    }
 }
 
 int

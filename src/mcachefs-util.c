@@ -93,6 +93,13 @@ mcachefs_createpath (const char *prefix, const char *cpath, int lastIsDir)
     if ( !lastIsDir )
     {
         path = dirname(path);
+        /*
+         * It seems that dirname() returns a constant '.' when file is at root
+         */
+        if ( strncmp(path,".", 2) == 0)
+        {
+        	path = strdup(path);
+        }
         Log ( "not lastIsDir, considering path=%s\n", path);
     }
     
