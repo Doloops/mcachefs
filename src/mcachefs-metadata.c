@@ -235,7 +235,6 @@ mcachefs_metadata_release_all(int forceUnmap)
     time_t ttl = (time_t) mcachefs_config_get_metadata_map_ttl();
     if ((!forceUnmap) && mcachefs_metadata_last_release >= now - ttl)
     {
-    	Log("Nothing to do here, exiting...");
         return;
     }
     mcachefs_metadata_last_release = now;
