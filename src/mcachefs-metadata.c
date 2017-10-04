@@ -376,6 +376,9 @@ mcachefs_metadata_close()
         close(mcachefs_metadata_fd);
         mcachefs_metadata_fd = -1;
     }
+    free(metadata_map);
+    metadata_map = NULL;
+    metadata_map_sz = 0;
 }
 
 void
