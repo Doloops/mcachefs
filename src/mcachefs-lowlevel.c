@@ -23,9 +23,9 @@ __mcachefs_fill_stat(struct stat *st, int type, off_t size)
 {
     memset(st, 0, sizeof(struct stat));
     st->st_mode = type
-            | ((type == S_IFDIR) ?
-                    (mcachefs_target_stat.st_mode & 0700) :
-                    (mcachefs_target_stat.st_mode & 0600));
+        | ((type == S_IFDIR) ?
+           (mcachefs_target_stat.st_mode & 0700) :
+           (mcachefs_target_stat.st_mode & 0600));
     st->st_uid = mcachefs_target_stat.st_uid;
     st->st_gid = mcachefs_target_stat.st_gid;
     st->st_size = size;
@@ -44,7 +44,7 @@ mcachefs_getattr(const char *path, struct stat *stbuf)
 
 static int
 mcachefs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-        off_t offset, struct fuse_file_info *info)
+                 off_t offset, struct fuse_file_info *info)
 {
     int res = 0;
     struct mcachefs_metadata_t *mfather, *mchild;
@@ -71,10 +71,10 @@ mcachefs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         return -ENOENT;
 
     for (mchild = mcachefs_metadata_get_child(mfather); mchild; mchild =
-            mcachefs_metadata_get(mchild->next))
+         mcachefs_metadata_get(mchild->next))
     {
-        Log(
-                "READDIR    '%s' (%p, next=%llu)\n", mchild->d_name, mchild, mchild->next);
+        Log("READDIR    '%s' (%p, next=%llu)\n", mchild->d_name, mchild,
+            mchild->next);
         res = filler(buf, mchild->d_name, &(mchild->st), 0);
         if (res)
             break;
@@ -90,8 +90,8 @@ mcachefs_readlink(const char *path, char *buf, size_t size)
     struct mcachefs_metadata_t *mdata;
     char *backingpath, *realpath;
     ssize_t res;
-    Log(
-            "mcachefs_readlink(path = %s, buf = ..., size = %lu)\n", path, (long) size);
+    Log("mcachefs_readlink(path = %s, buf = ..., size = %lu)\n", path,
+        (long) size);
 
     memset(buf, 0, size);
     mdata = mcachefs_metadata_find(path);
@@ -99,7 +99,7 @@ mcachefs_readlink(const char *path, char *buf, size_t size)
     if (!mdata)
         return -ENOENT;
 
-    if (!S_ISLNK (mdata->st.st_mode))
+    if (!S_ISLNK(mdata->st.st_mode))
     {
         mcachefs_metadata_release(mdata);
         return -EINVAL;
@@ -123,7 +123,7 @@ mcachefs_readlink(const char *path, char *buf, size_t size)
     {
         if (mcachefs_createpath_cache(path, 0))
         {
-            Err( "Could not create new backing path '%s'\n", backingpath);
+            Err("Could not create new backing path '%s'\n", backingpath);
         }
 
         if (symlink(buf, backingpath))
@@ -137,7 +137,7 @@ mcachefs_readlink(const char *path, char *buf, size_t size)
 
     free(realpath);
     free(backingpath);
-    Err("Could not get link from real : err=%d:%s\n", errno, strerror (errno));
+    Err("Could not get link from real : err=%d:%s\n", errno, strerror(errno));
     return -errno;
 }
 
@@ -150,15 +150,15 @@ mcachefs_symlink(const char *path, const char *to)
 
     if ((res = mcachefs_metadata_make_entry(to, S_IFLNK | 0777, 0)) != 0)
     {
-        Err(
-                "Could not make symlink entry : err=%d:%s\n", -res, strerror (-res));
+        Err("Could not make symlink entry : err=%d:%s\n", -res,
+            strerror(-res));
         return -res;
     }
 
     if ((res = mcachefs_createpath_cache(to, 0)) != 0)
     {
-        Err(
-                "Could not create backing path '%s' : err=%d:%s\n", to, -res, strerror (-res));
+        Err("Could not create backing path '%s' : err=%d:%s\n", to, -res,
+            strerror(-res));
         return res;
     }
 
@@ -171,16 +171,16 @@ mcachefs_symlink(const char *path, const char *to)
 
     if ((res = symlink(path, backingto)) != 0)
     {
-        Err(
-                "Could not make backing symlink entry : err=%d:%s\n", errno, strerror (errno));
+        Err("Could not make backing symlink entry : err=%d:%s\n", errno,
+            strerror(errno));
         free(backingto);
         mcachefs_metadata_rmdir_unlink(to, 0);
         return -errno;
     }
     free(backingto);
 
-    mcachefs_journal_append(mcachefs_journal_op_symlink, to, path, 0, 0, 0, 0,
-            0, NULL );
+    mcachefs_journal_append(mcachefs_journal_op_symlink, to, path, 0, 0, 0,
+                            0, 0, NULL);
 
     return 0;
 }
@@ -190,30 +190,31 @@ mcachefs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
     int res;
 
-    Log(
-            "mcachefs_mknod(path = %s, mode = %lo, rdev = %ld\n", path, (long) mode, (long) rdev);
+    Log("mcachefs_mknod(path = %s, mode = %lo, rdev = %ld\n", path,
+        (long) mode, (long) rdev);
 
     if ((res = mcachefs_metadata_make_entry(path, mode, rdev)) != 0)
     {
-        Err(
-                "mknod '%s' : Making metadata entry failed : err=%d:%s\n", path, -res, strerror (-res));
+        Err("mknod '%s' : Making metadata entry failed : err=%d:%s\n", path,
+            -res, strerror(-res));
         return res;
     }
 
-    mcachefs_journal_append(mcachefs_journal_op_mknod, path, NULL, mode, rdev,
-            fuse_get_context()->uid, fuse_get_context()->gid, 0, NULL );
+    mcachefs_journal_append(mcachefs_journal_op_mknod, path, NULL, mode,
+                            rdev, fuse_get_context()->uid,
+                            fuse_get_context()->gid, 0, NULL);
 
     Log("mknod : OK.\n");
 
-    if (S_ISREG (mode))
+    if (S_ISREG(mode))
     {
         /*
          * Create entry in backup
          */
         if ((res = mcachefs_createfile_cache(path, mode)) != 0)
         {
-            Err(
-                    "mknod : Making backing file for '%s' failed : err=%d:%s\n", path, -res, strerror (-res));
+            Err("mknod : Making backing file for '%s' failed : err=%d:%s\n",
+                path, -res, strerror(-res));
             return res;
         }
     }
@@ -229,14 +230,15 @@ mcachefs_mkdir(const char *path, mode_t mode)
 
     if ((res = mcachefs_metadata_make_entry(path, mode | S_IFDIR, 0)) != 0)
     {
-        Err("mkdir %s : err=%d:%s\n", path, res, strerror (-res));
+        Err("mkdir %s : err=%d:%s\n", path, res, strerror(-res));
         return res;
     }
 
     Log("mkdir : OK.\n");
 
     mcachefs_journal_append(mcachefs_journal_op_mkdir, path, NULL, mode, 0,
-            fuse_get_context()->uid, fuse_get_context()->gid, 0, NULL );
+                            fuse_get_context()->uid,
+                            fuse_get_context()->gid, 0, NULL);
 
     return 0;
 }
@@ -251,7 +253,7 @@ mcachefs_unlink(const char *path)
 
     if ((res = mcachefs_metadata_rmdir_unlink(path, 0)) != 0)
     {
-        Err("rmdir '%s' : err=%d:%s\n", path, res, strerror (-res));
+        Err("rmdir '%s' : err=%d:%s\n", path, res, strerror(-res));
         return res;
     }
     if (mcachefs_fileincache(path))
@@ -259,14 +261,14 @@ mcachefs_unlink(const char *path)
         backingpath = mcachefs_makepath_cache(path);
         if (unlink(backingpath))
         {
-            Err(
-                    "Could not unlink backing path '%s' : err=%d:%s\n", backingpath, errno, strerror (errno));
+            Err("Could not unlink backing path '%s' : err=%d:%s\n",
+                backingpath, errno, strerror(errno));
         }
         free(backingpath);
     }
 
-    mcachefs_journal_append(mcachefs_journal_op_unlink, path, NULL, 0, 0, 0, 0,
-            0, NULL );
+    mcachefs_journal_append(mcachefs_journal_op_unlink, path, NULL, 0, 0, 0,
+                            0, 0, NULL);
     return 0;
 }
 
@@ -280,20 +282,20 @@ mcachefs_rmdir(const char *path)
 
     if ((res = mcachefs_metadata_rmdir_unlink(path, 1)) != 0)
     {
-        Err("rmdir '%s' : err=%d:%s\n", path, res, strerror (-res));
+        Err("rmdir '%s' : err=%d:%s\n", path, res, strerror(-res));
         return res;
     }
 
-    mcachefs_journal_append(mcachefs_journal_op_rmdir, path, NULL, 0, 0, 0, 0,
-            0, NULL );
+    mcachefs_journal_append(mcachefs_journal_op_rmdir, path, NULL, 0, 0, 0,
+                            0, 0, NULL);
 
     if (mcachefs_fileincache(path))
     {
         backingpath = mcachefs_makepath_cache(path);
         if (rmdir(backingpath))
         {
-            Err(
-                    "Could not rmdir backing path '%s' : err=%d:%s\n", backingpath, errno, strerror (errno));
+            Err("Could not rmdir backing path '%s' : err=%d:%s\n",
+                backingpath, errno, strerror(errno));
         }
         free(backingpath);
     }
@@ -313,13 +315,13 @@ mcachefs_rename(const char *path, const char *to)
 
     if ((res = mcachefs_metadata_rename_entry(path, to)) != 0)
     {
-        Log(
-                "rename '%s' => '%s' : err=%d:%s\n", path, to, res, strerror (-res));
+        Log("rename '%s' => '%s' : err=%d:%s\n", path, to, res,
+            strerror(-res));
         return res;
     }
 
-    mcachefs_journal_append(mcachefs_journal_op_rename, path, to, 0, 0, 0, 0, 0,
-            NULL );
+    mcachefs_journal_append(mcachefs_journal_op_rename, path, to, 0, 0, 0, 0,
+                            0, NULL);
 
     if (mcachefs_fileincache(path))
     {
@@ -331,8 +333,8 @@ mcachefs_rename(const char *path, const char *to)
         }
         if (rename(backingpath, backingto))
         {
-            Err(
-                    "Could not rename cache path '%s' '%s' : err=%d:%s\n", backingpath, backingto, errno, strerror (errno));
+            Err("Could not rename cache path '%s' '%s' : err=%d:%s\n",
+                backingpath, backingto, errno, strerror(errno));
         }
         free(backingpath);
         free(backingto);
@@ -349,27 +351,27 @@ mcachefs_link(const char *from, const char *to)
     int res;
     char *realfrom, *realto;
 
-    mcachefs_metadata_invalidate (to);
+    mcachefs_metadata_invalidate(to);
 
-    realfrom = mcachefs_makerealpath (from);
+    realfrom = mcachefs_makerealpath(from);
     if (realfrom == NULL)
     {
         return -ENOMEM;
     }
 
-    realto = mcachefs_makerealpath (to);
+    realto = mcachefs_makerealpath(to);
     if (realto == NULL)
     {
-        free (realfrom);
+        free(realfrom);
         return -ENOMEM;
     }
 
-    res = link (realfrom, realto);
+    res = link(realfrom, realto);
 
-    free (realfrom);
-    free (realto);
+    free(realfrom);
+    free(realto);
     if (res == -1)
-    return -errno;
+        return -errno;
 
     return 0;
 #endif
@@ -390,8 +392,8 @@ mcachefs_chmod(const char *path, mode_t mode)
 
     mcachefs_metadata_release(mdata);
 
-    mcachefs_journal_append(mcachefs_journal_op_chmod, path, NULL, mode, 0, 0,
-            0, 0, NULL );
+    mcachefs_journal_append(mcachefs_journal_op_chmod, path, NULL, mode, 0,
+                            0, 0, 0, NULL);
 
     return 0;
 }
@@ -401,10 +403,10 @@ mcachefs_chown(const char *path, uid_t uid, gid_t gid)
 {
     struct mcachefs_metadata_t *mdata;
 
-    Log(
-            "mcachefs_chown(path = %s, uid = %ld, gid = %ld)\n", path, (long) uid, (long) gid);
+    Log("mcachefs_chown(path = %s, uid = %ld, gid = %ld)\n", path,
+        (long) uid, (long) gid);
 
-    if (__MCACHEFS_IS_VOPS_FILE (path))
+    if (__MCACHEFS_IS_VOPS_FILE(path))
         return -ENOSYS;
 
     mdata = mcachefs_metadata_find(path);
@@ -417,7 +419,7 @@ mcachefs_chown(const char *path, uid_t uid, gid_t gid)
     mcachefs_metadata_release(mdata);
 
     mcachefs_journal_append(mcachefs_journal_op_chown, path, NULL, 0, 0, uid,
-            gid, 0, NULL );
+                            gid, 0, NULL);
 
     return 0;
 }
@@ -429,8 +431,8 @@ mcachefs_truncate(const char *path, off_t size)
     char *backingpath;
     struct mcachefs_metadata_t *mdata;
 
-    Log(
-            "mcachefs_truncate(path = %s, size = %llu)\n", path, (unsigned long long) size);
+    Log("mcachefs_truncate(path = %s, size = %llu)\n", path,
+        (unsigned long long) size);
 
     mdata = mcachefs_metadata_find(path);
     if (!mdata)
@@ -447,7 +449,7 @@ mcachefs_truncate(const char *path, off_t size)
             while (mfile->use > 1)
             {
                 mcachefs_file_unlock_file(mfile);
-                Log( "VOPS file '%s' in use, waiting...\n", mfile->path);
+                Log("VOPS file '%s' in use, waiting...\n", mfile->path);
                 sleep(3);
                 mcachefs_file_lock_file(mfile);
             }
@@ -462,7 +464,7 @@ mcachefs_truncate(const char *path, off_t size)
     }
     mcachefs_metadata_release(mdata);
 
-    if (__MCACHEFS_IS_VOPS_FILE (path))
+    if (__MCACHEFS_IS_VOPS_FILE(path))
     {
         /**
          * We have done the update at the metadata level, now just cut off journal updating.
@@ -473,8 +475,8 @@ mcachefs_truncate(const char *path, off_t size)
     /*
      * Create the journal entry
      */
-    mcachefs_journal_append(mcachefs_journal_op_truncate, path, NULL, 0, 0, 0,
-            0, size, NULL );
+    mcachefs_journal_append(mcachefs_journal_op_truncate, path, NULL, 0, 0,
+                            0, 0, size, NULL);
 
     /*
      * Now shrink the temp file path if we need to
@@ -486,8 +488,7 @@ mcachefs_truncate(const char *path, off_t size)
             return -ENOMEM;
         if (truncate(backingpath, size))
         {
-            Err(
-                    "Could not truncate cache path '%s' for file '%s', err=%d:%s\n", backingpath, path, errno, strerror (errno));
+            Err("Could not truncate cache path '%s' for file '%s', err=%d:%s\n", backingpath, path, errno, strerror(errno));
         }
         free(backingpath);
     }
@@ -498,10 +499,10 @@ static int
 mcachefs_utime(const char *path, struct utimbuf *buf)
 {
     struct mcachefs_metadata_t *mdata;
-    Log(
-            "mcachefs_utime(path = %s, act=%lu, mod=%lu)\n", path, buf->actime, buf->modtime);
+    Log("mcachefs_utime(path = %s, act=%lu, mod=%lu)\n", path, buf->actime,
+        buf->modtime);
 
-    if ((mdata = mcachefs_metadata_find(path)) == NULL )
+    if ((mdata = mcachefs_metadata_find(path)) == NULL)
         return -ENOENT;
 
     mdata->st.st_atime = buf->actime;
@@ -509,8 +510,8 @@ mcachefs_utime(const char *path, struct utimbuf *buf)
 
     mcachefs_metadata_release(mdata);
 
-    mcachefs_journal_append(mcachefs_journal_op_utime, path, NULL, 0, 0, 0, 0,
-            0, buf);
+    mcachefs_journal_append(mcachefs_journal_op_utime, path, NULL, 0, 0, 0,
+                            0, 0, buf);
 
     return 0;
 }
@@ -530,28 +531,28 @@ mcachefs_open(const char *path, struct fuse_file_info *info)
 
     mdata = mcachefs_metadata_find(path);
 
-    if (mdata == NULL )
+    if (mdata == NULL)
     {
         Err("open(%s) : does not exist\n", path);
         return -ENOENT;
     }
-    if (!S_ISREG (mdata->st.st_mode))
+    if (!S_ISREG(mdata->st.st_mode))
     {
         Err("open(%s) : not a regular file !\n", path);
         mcachefs_metadata_release(mdata);
         return -EISDIR;
     }
 
-    if (__MCACHEFS_IS_VOPS_FILE (path))
+    if (__MCACHEFS_IS_VOPS_FILE(path))
     {
         type = mcachefs_file_type_vops;
     }
     else
     {
 #ifdef MCACHEFS_DISABLE_WRITE
-        if (__IS_WRITE (info->flags))
+        if (__IS_WRITE(info->flags))
         {
-            mcachefs_metadata_release (mdata);
+            mcachefs_metadata_release(mdata);
             return -EROFS;
         }
 #endif
@@ -572,12 +573,11 @@ mcachefs_open(const char *path, struct fuse_file_info *info)
 
 static int
 mcachefs_read(const char *path, char *buf, size_t size, off_t offset,
-        struct fuse_file_info *info)
+              struct fuse_file_info *info)
 {
     struct mcachefs_file_t *mfile;
 
-    Log(
-            "mcachefs_read(path = %s, buf = ..., size = %llu, offset = %llu, fh=%llx)\n", path, (unsigned long long) size, (unsigned long long) offset, (unsigned long long) info->fh);
+    Log("mcachefs_read(path = %s, buf = ..., size = %llu, offset = %llu, fh=%llx)\n", path, (unsigned long long) size, (unsigned long long) offset, (unsigned long long) info->fh);
 
     mfile = mcachefs_file_get(info->fh);
 
@@ -593,10 +593,10 @@ mcachefs_read(const char *path, char *buf, size_t size, off_t offset,
     /*
      * paranoid check !
      */
-    if (strcmp (mfile->path, path))
+    if (strcmp(mfile->path, path))
     {
-        Warn ("Diverging paths : '%s' != '%s' (file has been renamed ?)\n",
-                path, mfile->path);
+        Warn("Diverging paths : '%s' != '%s' (file has been renamed ?)\n",
+             path, mfile->path);
     }
 #endif
 
@@ -606,16 +606,16 @@ mcachefs_read(const char *path, char *buf, size_t size, off_t offset,
 
 static int
 mcachefs_write(const char *path, const char *buf, size_t size, off_t offset,
-        struct fuse_file_info *info)
+               struct fuse_file_info *info)
 {
     struct mcachefs_file_t *mfile;
 
-    Log(
-            "mcachefs_write(path = %s, buf = ..., size = %llu, offset = %llu)\n", path, (unsigned long long) size, (unsigned long long) offset);
+    Log("mcachefs_write(path = %s, buf = ..., size = %llu, offset = %llu)\n",
+        path, (unsigned long long) size, (unsigned long long) offset);
 
     if (size == 0)
     {
-        Err( "mcachefs_write() : attempt to write zero bytes in '%s'\n", path);
+        Err("mcachefs_write() : attempt to write zero bytes in '%s'\n", path);
         return 0;
     }
 
@@ -637,8 +637,8 @@ mcachefs_fsync(const char *path, int sync, struct fuse_file_info *info)
     (void) sync;
 
     struct mcachefs_file_t *mfile;
-    Log(
-            "mcachefs_fsync (%s, %d, fh=%llu)\n", path, sync, (unsigned long long) info->fh);
+    Log("mcachefs_fsync (%s, %d, fh=%llu)\n", path, sync,
+        (unsigned long long) info->fh);
 
     mfile = mcachefs_file_get(info->fh);
 
@@ -669,7 +669,7 @@ mcachefs_release(const char *path, struct fuse_file_info *info)
 
 #if 0
 static int
-mcachefs_statfs (const char *path, struct statvfs *fsinfo)
+mcachefs_statfs(const char *path, struct statvfs *fsinfo)
 {
     (void) path;
     (void) fsinfo;
@@ -682,8 +682,8 @@ mcachefs_flush(const char *path, struct fuse_file_info *info)
 {
     (void) path;
     (void) info;
-    Log(
-            "[NOT IMPLEMENTED] mcachefs_flush(%s,fh=%lx)\n", path, (unsigned long) info->fh);
+    Log("[NOT IMPLEMENTED] mcachefs_flush(%s,fh=%lx)\n", path,
+        (unsigned long) info->fh);
     return 0;
 }
 
@@ -698,7 +698,7 @@ mcachefs_init(struct fuse_conn_info *conn)
 
     Info("Filesystem now serving requests...\n");
 
-    return NULL ;
+    return NULL;
 }
 
 static void
@@ -714,18 +714,19 @@ mcachefs_destroy(void *conn)
 }
 
 struct fuse_operations mcachefs_oper =
-    { .getattr = mcachefs_getattr, .readlink = mcachefs_readlink,
-            .getdir = NULL, .mknod = mcachefs_mknod, .mkdir = mcachefs_mkdir,
-            .unlink = mcachefs_unlink, .rmdir = mcachefs_rmdir, .symlink =
-                    mcachefs_symlink, .rename = mcachefs_rename, .link =
-                    mcachefs_link, .chmod = mcachefs_chmod, .chown =
-                    mcachefs_chown, .truncate = mcachefs_truncate, .utime =
-                    mcachefs_utime, .open = mcachefs_open,
-            .read = mcachefs_read, .write = mcachefs_write, .statfs = NULL,
-            .flush = mcachefs_flush, .release = mcachefs_release, .fsync =
-                    mcachefs_fsync, .setxattr = NULL, .getxattr = NULL,
-            .listxattr = NULL, .opendir = NULL, .readdir = mcachefs_readdir,
-            .fsyncdir = NULL, .init = mcachefs_init,
-            .destroy = mcachefs_destroy, .access = NULL, .create = NULL,
-            .ftruncate = NULL, .fgetattr = NULL, .lock = NULL, .utimens = NULL,
-            .bmap = NULL , };
+    {.getattr = mcachefs_getattr,.readlink = mcachefs_readlink,
+    .getdir = NULL,.mknod = mcachefs_mknod,.mkdir = mcachefs_mkdir,
+    .unlink = mcachefs_unlink,.rmdir = mcachefs_rmdir,.symlink =
+        mcachefs_symlink,.rename = mcachefs_rename,.link =
+        mcachefs_link,.chmod = mcachefs_chmod,.chown =
+        mcachefs_chown,.truncate = mcachefs_truncate,.utime =
+        mcachefs_utime,.open = mcachefs_open,
+    .read = mcachefs_read,.write = mcachefs_write,.statfs = NULL,
+    .flush = mcachefs_flush,.release = mcachefs_release,.fsync =
+        mcachefs_fsync,.setxattr = NULL,.getxattr = NULL,
+    .listxattr = NULL,.opendir = NULL,.readdir = mcachefs_readdir,
+    .fsyncdir = NULL,.init = mcachefs_init,
+    .destroy = mcachefs_destroy,.access = NULL,.create = NULL,
+    .ftruncate = NULL,.fgetattr = NULL,.lock = NULL,.utimens = NULL,
+    .bmap = NULL,
+};

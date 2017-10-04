@@ -13,46 +13,46 @@
 
 #include "mcachefs.h"
 
-FILE* LOG_FD;
+FILE *LOG_FD;
 
 int
-main (int argc, char *argv[])
+main(int argc, char *argv[])
 {
     LOG_FD = stderr;
 
-    struct mcachefs_config* config;
+    struct mcachefs_config *config;
 
-    printf ("mcachefs " __MCACHEFS_VERSION__ " starting up...\n");
-    
+    printf("mcachefs " __MCACHEFS_VERSION__ " starting up...\n");
+
     config = mcachefs_parse_config(argc, argv);
-    
-    if ( config == NULL )
+
+    if (config == NULL)
     {
-    	return 1;
+        return 1;
     }
 
     mcachefs_set_current_config(config);
 
-    mcachefs_file_timeslice_init_variables ();
+    mcachefs_file_timeslice_init_variables();
 
 
     mcachefs_metadata_lock();
-    mcachefs_metadata_open ();
+    mcachefs_metadata_open();
     mcachefs_metadata_unlock();
 
     mcachefs_metadata_populate_vops();
 
 #ifdef MCACHEFS_DISABLE_WRITE
-    Info ("Serving read-only !\n");
+    Info("Serving read-only !\n");
 #else
-    Info ("Serving read-write !\n");
+    Info("Serving read-write !\n");
 #endif
 
     void *user_data = NULL;
     int fuse_argc = config->fuse_args.argc;
-    char** fuse_argv = config->fuse_args.argv;
-    fuse_main (fuse_argc, fuse_argv, &mcachefs_oper, user_data);
+    char **fuse_argv = config->fuse_args.argv;
+    fuse_main(fuse_argc, fuse_argv, &mcachefs_oper, user_data);
 
-    Info ("Serving finished !\n");
+    Info("Serving finished !\n");
     return 0;
 }

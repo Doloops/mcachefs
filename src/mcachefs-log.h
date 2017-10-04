@@ -19,7 +19,7 @@
  * Logging facility
  */
 
-extern FILE* LOG_FD;
+extern FILE *LOG_FD;
 
 #ifdef __MCACHEFS_USES_SYSLOG
 #define Log(...)  syslog(LOG_DEBUG, __VA_ARGS__)

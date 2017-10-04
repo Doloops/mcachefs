@@ -3,37 +3,33 @@
 #include <libgen.h>
 #include <stddef.h>
 
-const char* DEFAULT_PREFIX = "/tmp/mcachefs";
+const char *DEFAULT_PREFIX = "/tmp/mcachefs";
 
 const int DEFAULT_VERBOSE = 0;
 
-void
-trim_last_separator(char* path);
-void
-set_default_config(struct mcachefs_config* config);
-int
-check_dir_exists(const char* cpath);
-void
-check_file_dir_exists(const char* cpath);
+void trim_last_separator(char *path);
+void set_default_config(struct mcachefs_config *config);
+int check_dir_exists(const char *cpath);
+void check_file_dir_exists(const char *cpath);
 
 static int
 mcachefs_arg_proc(void *data, const char *arg, int key,
-        struct fuse_args *outargs)
+                  struct fuse_args *outargs)
 {
     (void) outargs;
     Log("arg data=%p, arg=%s, key=%d, outargs=%p\n", data, arg, key, outargs);
 
-    struct mcachefs_config* config = (struct mcachefs_config*) data;
+    struct mcachefs_config *config = (struct mcachefs_config *) data;
     switch (key)
     {
     case FUSE_OPT_KEY_NONOPT:
-        if (config->source == NULL )
+        if (config->source == NULL)
         {
             config->source = strdup(arg);
             trim_last_separator(config->source);
             return 0;
         }
-        if (config->mountpoint == NULL )
+        if (config->mountpoint == NULL)
         {
             Log("Setting mountpoint to %s\n", arg);
             config->mountpoint = strdup(arg);
@@ -46,25 +42,25 @@ mcachefs_arg_proc(void *data, const char *arg, int key,
     return 1;
 }
 
-static struct fuse_opt mcachefs_opts[] =
-    {
-        { "cache=%s", offsetof(struct mcachefs_config,cache), 0 },
-        { "metafile=%s", offsetof(struct mcachefs_config,metafile), 0 },
-        { "journal=%s", offsetof(struct mcachefs_config,journal), 0 },
-        { "verbose=%lu", offsetof(struct mcachefs_config,verbose), 0 },
-            FUSE_OPT_END };
+static struct fuse_opt mcachefs_opts[] = {
+    {"cache=%s", offsetof(struct mcachefs_config, cache), 0},
+    {"metafile=%s", offsetof(struct mcachefs_config, metafile), 0},
+    {"journal=%s", offsetof(struct mcachefs_config, journal), 0},
+    {"verbose=%lu", offsetof(struct mcachefs_config, verbose), 0},
+    FUSE_OPT_END
+};
 
-struct mcachefs_config*
-mcachefs_parse_config(int argc, char* argv[])
+struct mcachefs_config *
+mcachefs_parse_config(int argc, char *argv[])
 {
     if (argc < 3)
     {
         Err("Invalid number of arguments !\n");
-        return NULL ;
+        return NULL;
     }
 
-    struct mcachefs_config* config = (struct mcachefs_config*) malloc(
-            sizeof(struct mcachefs_config));
+    struct mcachefs_config *config =
+        (struct mcachefs_config *) malloc(sizeof(struct mcachefs_config));
     memset(config, 0, sizeof(struct mcachefs_config));
 
     Log("config at %p\n", config);
@@ -86,13 +82,13 @@ mcachefs_parse_config(int argc, char* argv[])
     config->fuse_args.argv = argv;
     config->fuse_args.allocated = 0;
     int res = fuse_opt_parse(&(config->fuse_args), config, mcachefs_opts,
-            mcachefs_arg_proc);
+                             mcachefs_arg_proc);
 
     if (res != 0)
     {
         Err("Could not parse arguments !");
         free(config);
-        return NULL ;
+        return NULL;
     }
 
     Log("After fuse_opt_parse res=%d\n", res);
@@ -106,9 +102,9 @@ mcachefs_parse_config(int argc, char* argv[])
 }
 
 void
-trim_last_separator(char* path)
+trim_last_separator(char *path)
 {
-    char* mp;
+    char *mp;
     for (mp = path;; mp++)
     {
         if (mp[1] == 0)
@@ -123,14 +119,14 @@ trim_last_separator(char* path)
 }
 
 void
-set_default_config(struct mcachefs_config* config)
+set_default_config(struct mcachefs_config *config)
 {
-    const char* mp = config->mountpoint;
+    const char *mp = config->mountpoint;
     if (*mp == '/')
     {
         mp++;
     }
-    char* normalized_mp = strdup(mp), *cur;
+    char *normalized_mp = strdup(mp), *cur;
 
     for (cur = normalized_mp; *cur != 0; cur++)
     {
@@ -141,30 +137,30 @@ set_default_config(struct mcachefs_config* config)
     }
     Info("Normalized mountpoint : %s\n", normalized_mp);
 
-    if (config->cache == NULL )
+    if (config->cache == NULL)
     {
-        config->cache = (char*) malloc(PATH_MAX);
+        config->cache = (char *) malloc(PATH_MAX);
         snprintf(config->cache, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX,
-                normalized_mp, "cache");
+                 normalized_mp, "cache");
     }
 
-    if (config->metafile == NULL )
+    if (config->metafile == NULL)
     {
-        config->metafile = (char*) malloc(PATH_MAX);
+        config->metafile = (char *) malloc(PATH_MAX);
         snprintf(config->metafile, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX,
-                normalized_mp, "metafile");
+                 normalized_mp, "metafile");
     }
 
-    if (config->journal == NULL )
+    if (config->journal == NULL)
     {
-        config->journal = (char*) malloc(PATH_MAX);
+        config->journal = (char *) malloc(PATH_MAX);
         snprintf(config->journal, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX,
-                normalized_mp, "journal");
+                 normalized_mp, "journal");
     }
 }
 
 void
-mcachefs_dump_config(struct mcachefs_config* config)
+mcachefs_dump_config(struct mcachefs_config *config)
 {
     Info("mcachefs Configuration :\n");
     Info("* Mountpoint %s\n", config->mountpoint);
@@ -181,7 +177,7 @@ mcachefs_dump_config(struct mcachefs_config* config)
 }
 
 void
-mcachefs_set_current_config(struct mcachefs_config* config)
+mcachefs_set_current_config(struct mcachefs_config *config)
 {
     check_dir_exists(config->cache);
     check_file_dir_exists(config->metafile);
@@ -199,23 +195,23 @@ mcachefs_set_current_config(struct mcachefs_config* config)
 }
 
 void
-check_file_dir_exists(const char* cpath)
+check_file_dir_exists(const char *cpath)
 {
-    char* path = strdup(cpath);
+    char *path = strdup(cpath);
     path = dirname(path);
     check_dir_exists(path);
-    if ( strncmp(path, ".", 2) != 0 )
+    if (strncmp(path, ".", 2) != 0)
     {
-    	free(path);
+        free(path);
     }
 }
 
 int
-check_dir_exists(const char* cpath)
+check_dir_exists(const char *cpath)
 {
     struct stat sb;
     int res;
-    char* parentpath;
+    char *parentpath;
     if (stat(cpath, &sb) != 0)
     {
         Log("Path %s does not exist, creating it\n", cpath);
@@ -246,33 +242,33 @@ check_dir_exists(const char* cpath)
 /**
  * Access to current instance of config
  */
-struct mcachefs_config* current_config;
+struct mcachefs_config *current_config;
 
-const char*
+const char *
 mcachefs_config_get_mountpoint()
 {
     return current_config->mountpoint;
 }
 
-const char*
+const char *
 mcachefs_config_get_source()
 {
     return current_config->source;
 }
 
-const char*
+const char *
 mcachefs_config_get_cache()
 {
     return current_config->cache;
 }
 
-const char*
+const char *
 mcachefs_config_get_metafile()
 {
     return current_config->metafile;
 }
 
-const char*
+const char *
 mcachefs_config_get_journal()
 {
     return current_config->journal;
@@ -289,6 +285,7 @@ mcachefs_config_set_read_state(int rdstate)
 {
     current_config->read_state = rdstate;
 }
+
 int
 mcachefs_config_get_read_state()
 {
@@ -340,12 +337,14 @@ mcachefs_config_set_file_ttl(int ttl)
     }
 }
 
-int mcachefs_config_get_metadata_map_ttl ()
+int
+mcachefs_config_get_metadata_map_ttl()
 {
     return current_config->metadata_map_ttl;
 }
 
-void mcachefs_config_set_metadata_map_ttl (int ttl)
+void
+mcachefs_config_set_metadata_map_ttl(int ttl)
 {
     current_config->metadata_map_ttl = ttl;
 }
@@ -374,24 +373,26 @@ mcachefs_config_get_cleanup_cache_prefix()
     return current_config->cleanup_cache_prefix;
 }
 
-const char* mcachefs_config_get_cache_prefix()
+const char *
+mcachefs_config_get_cache_prefix()
 {
     return current_config->cache_prefix;
 }
 
-void mcachefs_config_set_cache_prefix(const char* prefix)
+void
+mcachefs_config_set_cache_prefix(const char *prefix)
 {
-    if ( prefix == NULL )
+    if (prefix == NULL)
     {
         return;
     }
-    if ( current_config->cache_prefix )
+    if (current_config->cache_prefix)
     {
         free(current_config->cache_prefix);
     }
-    const char* mp = mcachefs_config_get_mountpoint();
+    const char *mp = mcachefs_config_get_mountpoint();
     int mp_len = strlen(mp);
-    if ( strncmp(prefix, mp, mp_len) == 0)
+    if (strncmp(prefix, mp, mp_len) == 0)
     {
         Log("Provided prefix '%s' is based on root mountpoint '%s', removing mp prefix\n", prefix, mp);
         prefix = prefix + mp_len;
@@ -401,4 +402,3 @@ void mcachefs_config_set_cache_prefix(const char* prefix)
 
     trim_last_separator(current_config->cache_prefix);
 }
-

@@ -51,39 +51,39 @@ struct mcachefs_journal_entry_t
 /**
  * Init journal values, check for pending journals
  */
-void mcachefs_journal_init ();
+void mcachefs_journal_init();
 
 /**
  * Append an entry in the update journal
  */
-void mcachefs_journal_append (mcachefs_journal_op op, const char *path,
-                              const char *to, mode_t mode, dev_t rdev,
-                              uid_t uid, gid_t gid, off_t size,
-                              struct utimbuf *utimbuf);
+void mcachefs_journal_append(mcachefs_journal_op op, const char *path,
+                             const char *to, mode_t mode, dev_t rdev,
+                             uid_t uid, gid_t gid, off_t size,
+                             struct utimbuf *utimbuf);
 
 /**
  * Check if a new path was renamed in the journal, ie the provided path is a target in the path rename
  */
-int mcachefs_journal_was_renamed (const char *path);
+int mcachefs_journal_was_renamed(const char *path);
 
 /**
  * Apply current journal
  */
-void mcachefs_journal_apply ();
+void mcachefs_journal_apply();
 
 /**
  * Drop current journal
  */
-void mcachefs_journal_drop ();
+void mcachefs_journal_drop();
 
 /**
  * Notify end of sync
  */
-void mcachefs_notify_sync_end (const char *path, int success);
+void mcachefs_notify_sync_end(const char *path, int success);
 
 /**
  * Dump current journal contents
  */
-void mcachefs_journal_dump (struct mcachefs_file_t *mvops);
+void mcachefs_journal_dump(struct mcachefs_file_t *mvops);
 
 #endif /* MCACHEFSJOURNAL_H_ */

@@ -23,27 +23,27 @@
 /**
  * Get the vops file list
  */
-const char **mcachefs_vops_get_vops_list ();
+const char **mcachefs_vops_get_vops_list();
 
 /**
  * Called at open(), build the content of the vops file
  */
-void mcachefs_vops_build (struct mcachefs_file_t *mfile);
+void mcachefs_vops_build(struct mcachefs_file_t *mfile);
 
 /**
  * Called at release() when openned for write, parse that contents we have been sent.
  */
-void mcachefs_vops_parse (struct mcachefs_file_t *mfile);
+void mcachefs_vops_parse(struct mcachefs_file_t *mfile);
 
 /**
  * Cleanup vops ressources for a given file
  */
-void mcachefs_vops_cleanup_vops (struct mcachefs_file_t *mfile);
+void mcachefs_vops_cleanup_vops(struct mcachefs_file_t *mfile);
 
 /**
  * Get the size of the currently openned vops file, or default size if none openned.
  */
-off_t mcachefs_vops_getsize (const char *path);
+off_t mcachefs_vops_getsize(const char *path);
 
 /**
  * VOPS file writer

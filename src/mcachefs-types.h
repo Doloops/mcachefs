@@ -73,7 +73,7 @@ struct mcachefs_file_source_t
 {
     int fd;                     //< The file descriptor to use
     int use;                    //< Number of concurrent accesses to this fd
-    int wr;                    //< Set to TRUE to indicate that fd is openned wr
+    int wr;                     //< Set to TRUE to indicate that fd is openned wr
     size_t bytesrd;             // Number of bytes read
     size_t nbrd;                // Number of read accesses
     size_t byteswr;             // Number of bytes written
@@ -92,7 +92,7 @@ struct mcachefs_file_t
      * General file header
      */
     hash_t hash;                //< The hash value of the file
-    char *path;          //< The strdup()ed value of the path provided at open()
+    char *path;                 //< The strdup()ed value of the path provided at open()
     mcachefs_file_type_t type;  //< The type of the file openned
     mcachefs_metadata_id metadata_id;   //< The corresponding metadata id
 
@@ -116,8 +116,8 @@ struct mcachefs_file_t
     /**
      * Backing part
      */
-    int cache_status; //< Indicate the state of the backing : asked, in progress, done
-    int dirty; //< If the file has been written, this flag indicates the backing file is fresher than the real one
+    int cache_status;           //< Indicate the state of the backing : asked, in progress, done
+    int dirty;                  //< If the file has been written, this flag indicates the backing file is fresher than the real one
     // off_t backed_size; //< How many bytes have been backed now, only available when backing == IN_PROGRESS
 
     /**
@@ -129,14 +129,14 @@ struct mcachefs_file_t
      * VOPS stuff
      * vops mean being able to have in-mem contents for a file from open() till release()
      */
-    char *contents; // Pointer to the contents, which must be NULL or malloc()ed (ie not mmap()ed)
+    char *contents;             // Pointer to the contents, which must be NULL or malloc()ed (ie not mmap()ed)
     off_t contents_size;        // Size of the valuable part of the contents
-    off_t contents_alloced; // Size of the last allocation of contents (how much we can write to it).
+    off_t contents_alloced;     // Size of the last allocation of contents (how much we can write to it).
 
     /*
      * Timeslice double-linked-list
      */
-    int timeslice;          //< only valid for head timeslice (previous == NULL)
+    int timeslice;              //< only valid for head timeslice (previous == NULL)
     struct mcachefs_file_t *timeslice_previous;
     struct mcachefs_file_t *timeslice_next;
 

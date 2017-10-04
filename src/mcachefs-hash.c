@@ -2,7 +2,7 @@
 
 #if 1
 hash_t
-continueHashPartial (hash_t h, const char *str, int sz)
+continueHashPartial(hash_t h, const char *str, int sz)
 {
     int cur = 0;
     const char *c;
@@ -21,7 +21,7 @@ continueHashPartial (hash_t h, const char *str, int sz)
 }
 #else
 hash_t
-continueHashPartial (hash_t h, const char *str, int sz)
+continueHashPartial(hash_t h, const char *str, int sz)
 {
     int cur = 0;
     const char *c;
@@ -40,22 +40,20 @@ continueHashPartial (hash_t h, const char *str, int sz)
 #endif
 
 hash_t
-continueHash (hash_t h, const char *str)
+continueHash(hash_t h, const char *str)
 {
-    return continueHashPartial (h, str, ~((int) 0));
+    return continueHashPartial(h, str, ~((int) 0));
 }
 
 hash_t
-doHashPartial (const char *str, int sz)
+doHashPartial(const char *str, int sz)
 {
     hash_t h = 0x245;
-    return continueHashPartial (h, str, sz);
+    return continueHashPartial(h, str, sz);
 }
 
 hash_t
-doHash (const char *str)
+doHash(const char *str)
 {
-    return doHashPartial (str, ~((int) 0));
+    return doHashPartial(str, ~((int) 0));
 }
-
-
