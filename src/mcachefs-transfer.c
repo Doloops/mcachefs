@@ -381,11 +381,14 @@ mcachefs_transfer_get_next_file_to_back_locked (int type)
     return mfile;
 }
 
-void mcachefs_transfer_do_backing (struct mcachefs_file_t *mfile);
+void
+mcachefs_transfer_do_backing (struct mcachefs_file_t *mfile);
+
 void
 mcachefs_transfer_do_writeback (struct mcachefs_file_t *mfile,
                                 struct utimbuf *timbuf);
-int mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking);
+int
+mcachefs_transfer_file (struct mcachefs_file_t *mfile, int tobacking);
 
 void
 mcachefs_transfer_do_transfer (struct mcachefs_file_t *mfile)

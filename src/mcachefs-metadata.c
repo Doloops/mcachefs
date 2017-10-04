@@ -2051,8 +2051,7 @@ mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile)
 
     mcachefs_metadata_schedule_fill_child_entries(mdata);
 
-    mcachefs_metadata_unlock ()
-    ;
+    mcachefs_metadata_unlock ();
 }
 
 void
@@ -2061,12 +2060,10 @@ mcachefs_metadata_fill(const char *path)
     struct mcachefs_metadata_t *metadata = mcachefs_metadata_find_entry(path);
     if (metadata)
     {
-        Log(
-                "\tFound '%s' at %llu, hash=%llx\n", path, metadata->id, metadata->hash);
+        Log("\tFound '%s' at %llu, hash=%llx\n", path, metadata->id, metadata->hash);
         mcachefs_metadata_schedule_fill_entry(metadata);
         Info("Scheduled metadata fetch for '%s'\n", path);
-        mcachefs_metadata_unlock ()
-        ;
+        mcachefs_metadata_unlock ();
     }
     else
     {
