@@ -1,2 +1,4 @@
 /.project
 /gmon.out
+*.gcda
+callgrind.out.*
