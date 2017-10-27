@@ -4,12 +4,17 @@
 #define __MCACHEFS_VERSION__ "0.6.0"
 
 #define FUSE_USE_VERSION 29
-#define _BSD_SOURCE
+
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
 
 #ifdef linux
 /* For pread()/pwrite() */
 #define _XOPEN_SOURCE 600
+#ifndef _ATFILE_SOURCE
 #define _ATFILE_SOURCE
+#endif
 #define __USE_GNU
 #endif
 
