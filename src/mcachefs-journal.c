@@ -389,6 +389,7 @@ mcachefs_journal_was_renamed(const char *newpath)
 
     if (fd < 0)
     {
+        mcachefs_journal_unlock();
         Err("Could not open journal file, exiting.\n");
         return 0;
     }
