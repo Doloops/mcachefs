@@ -317,7 +317,7 @@ mcachefs_file_do_open(struct mcachefs_file_t *mfile, int flags, mode_t mode,
     }
 
     if (flags & O_NONBLOCK)
-        Info("Openning '%s' with O_NONBLOCK flag !\n", translated_path);
+        Info("Opening '%s' with O_NONBLOCK flag !\n", translated_path);
 
     Log("Preparing to open with translated_path='%s', flags=%x, mode=%x\n",
         translated_path, flags, mode);
@@ -331,7 +331,7 @@ mcachefs_file_do_open(struct mcachefs_file_t *mfile, int flags, mode_t mode,
 
     if (source->fd == -1)
     {
-        Err("mcachefs_file_do_open : openning from '%s' returned error %d:%s\n", translated_path, errno, strerror(errno));
+        Err("mcachefs_file_do_open : opening from '%s' returned error %d:%s\n", translated_path, errno, strerror(errno));
         free(translated_path);
         mcachefs_file_unlock_file(mfile);
         return -errno;
@@ -358,7 +358,7 @@ mcachefs_file_getfd_mode(struct mcachefs_file_t *mfile, int real, int flags,
     {
         if (mcachefs_config_get_read_state() == MCACHEFS_STATE_HANDSUP)
         {
-            Bug("While openning real file for '%s' : mcachefs state set to HANDSUP.\n", mfile->path);
+            Bug("While opening real file for '%s' : mcachefs state set to HANDSUP.\n", mfile->path);
             return -EIO;
         }
         fd = mcachefs_file_do_open(mfile, flags, mode,
