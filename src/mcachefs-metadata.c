@@ -94,6 +94,12 @@ mcachefs_metadata_do_get(mcachefs_metadata_id id)
         mcachefs_metadata_mmap_block(block);
     }
 
+    // we have to check if the corresponding block for the given ID
+    // exists, unless we have to return NULL
+    // https://github.com/Doloops/mcachefs/issues/5
+    if ( block >= metadata_map_mmap_count ){
+      return NULL;
+    }
     metadata_map[block].last_used = mcachefs_get_jiffy_sec();
     struct mcachefs_metadata_t *meta =
         (struct mcachefs_metadata_t *) ((unsigned long)
@@ -1309,7 +1315,10 @@ mcachefs_metadata_clean_fh_locked(mcachefs_metadata_id id)
     if (id)
     {
         mdata = mcachefs_metadata_do_get(id);
-        mdata->fh = 0;
+        // we have to check if pointer exists, in case metadata was flushed
+        // issue #5 - https://github.com/Doloops/mcachefs/issues/5
+        if (mdata)
+          mdata->fh = 0;
     }
 }
 
