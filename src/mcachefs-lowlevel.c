@@ -116,7 +116,7 @@ mcachefs_readlink(const char *path, char *buf, size_t size)
         return 0;
     }
 
-    Err("Could not read from backing...\n");
+    Err("Could not read from backing... %s\n", backingpath);
     realpath = mcachefs_makepath_source(path);
 
     if ((res = readlink(realpath, buf, size)) != -1)
@@ -413,8 +413,15 @@ mcachefs_chown(const char *path, uid_t uid, gid_t gid)
     if (!mdata)
         return -ENOENT;
 
-    mdata->st.st_uid = uid;
-    mdata->st.st_gid = gid;
+
+    if (uid==0xFFFFFFFF)
+      uid = mdata->st.st_uid;
+    else
+      mdata->st.st_uid = uid;
+    if (gid==0xFFFFFFFF)
+      gid = mdata->st.st_gid;
+    else
+      mdata->st.st_gid = gid;
 
     mcachefs_metadata_release(mdata);
 
