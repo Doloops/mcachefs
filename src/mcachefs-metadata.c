@@ -448,90 +448,6 @@ mcachefs_metadata_get_root()
     return mcachefs_metadata_do_get(mcachefs_metadata_id_root);
 }
 
-#if 0
-void
-mcachefs_metadata_extend()
-{
-    struct mcachefs_metadata_t *metadata_old = mcachefs_metadata;
-
-    struct mcachefs_metadata_head_t *head =
-        (struct mcachefs_metadata_head_t *) mcachefs_metadata;
-    struct mcachefs_metadata_t *newmeta;
-    mcachefs_metadata_id alloced_nb = head->alloced_nb, first_free =
-        head->alloced_nb;
-    mcachefs_metadata_id current;
-
-    Log("Could not allocate, now extend file.\n");
-
-    munmap(mcachefs_metadata, mcachefs_metadata_size);
-
-    alloced_nb += MCACHEFS_METADATA_EXTEND_ALLOC;
-
-    if (ftruncate(mcachefs_metadata_fd,
-                  alloced_nb * sizeof(struct mcachefs_metadata_t)))
-    {
-        Bug("Could not ftruncate up to %llu records : err=%d:%s\n",
-            alloced_nb, errno, strerror(errno));
-    }
-
-    mcachefs_metadata_size = alloced_nb * sizeof(struct mcachefs_metadata_t);
-
-    mcachefs_metadata = mmap(mcachefs_metadata, mcachefs_metadata_size,
-                             PROT_READ | PROT_WRITE, MAP_SHARED,
-                             mcachefs_metadata_fd, 0);
-
-    if (mcachefs_metadata == NULL || mcachefs_metadata == MAP_FAILED)
-    {
-        Err("Could not open metadata !\n");
-        exit(-1);
-    }
-    Log("RE-Openned metafile '%s'\n", mcachefs_config_get_metafile());
-
-    head = (struct mcachefs_metadata_head_t *) mcachefs_metadata;
-    head->first_free = first_free;
-    head->alloced_nb = alloced_nb;
-
-    for (current = first_free; current < alloced_nb; current++)
-    {
-        newmeta = mcachefs_metadata_do_get(current);
-        // Useless memset()
-        memset(newmeta, 0, sizeof(struct mcachefs_metadata_t));
-        newmeta->id = current;
-        newmeta->next = current + 1 < alloced_nb ? current + 1 : 0;
-    }
-
-    if (metadata_old != mcachefs_metadata)
-    {
-        Log("metadata : remapped mcachefs_metadata from %p to %p\n",
-            metadata_old, mcachefs_metadata);
-    }
-}
-
-mcachefs_metadata_id
-mcachefs_metadata_allocate()
-{
-    struct mcachefs_metadata_head_t *head =
-        (struct mcachefs_metadata_head_t *) mcachefs_metadata;
-    struct mcachefs_metadata_t *next;
-
-    if (!head->first_free)
-    {
-        mcachefs_metadata_extend();
-        head = (struct mcachefs_metadata_head_t *) mcachefs_metadata;
-    }
-    next = mcachefs_metadata_do_get(head->first_free);
-    head->first_free = next->next;
-
-    if (next->id == 0)
-    {
-        Bug("Invalid next !\n");
-    }
-    Log("Allocate : provided next=%llu, next->next=%llu\n", next->id,
-        next->next);
-
-    return next->id;
-}
-#else
 mcachefs_metadata_id
 mcachefs_metadata_allocate()
 {
@@ -567,7 +483,6 @@ mcachefs_metadata_allocate()
 
     return next->id;
 }
-#endif
 
 int
 mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
