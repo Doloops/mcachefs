@@ -38,7 +38,9 @@
 
 #define FUNCTIONCALL 1
 
+#ifndef PARANOID
 #define PARANOID 0
+#endif
 
 #include "mcachefs-log.h"
 

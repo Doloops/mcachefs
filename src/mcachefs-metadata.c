@@ -397,6 +397,15 @@ mcachefs_metadata_close()
 void
 mcachefs_metadata_flush()
 {
+    int count_open;
+
+    count_open = mcachefs_file_timeslices_count_open();
+
+    if ( count_open > 0 )
+    {
+        Err("Filesystem is busy ! %d files open !\n", count_open);
+        return;
+    }
     Info("Flushing metadata :\n");
     mcachefs_metadata_lock();
 

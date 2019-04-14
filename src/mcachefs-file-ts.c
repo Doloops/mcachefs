@@ -468,3 +468,26 @@ mcachefs_file_timeslices_dump(struct mcachefs_file_t *mvops)
 
     mcachefs_file_unlock();
 }
+
+int
+mcachefs_file_timeslices_count_open()
+{
+    int count = 0, ts;
+
+    mcachefs_file_lock();
+    struct mcachefs_file_t* file;
+    for (ts = 0; ts < mcachefs_file_timeslice_nb + 2; ts++)
+    {
+        file = mcachefs_file_timeslices[ts];
+        while ( file != NULL )
+        {
+            if ( file->type == mcachefs_file_type_file || file->type == mcachefs_file_type_dir )
+            {
+                count++;
+            }
+            file = file->timeslice_next;
+        }
+    }
+    mcachefs_file_unlock();
+    return count;
+}

@@ -175,4 +175,9 @@ void mcachefs_file_timeslice_update();
  */
 void mcachefs_file_timeslices_dump(struct mcachefs_file_t *mvops);
 
+/**
+ * Count number of active files in timeslice
+ */
+int mcachefs_file_timeslices_count_open();
+
 #endif /* MCACHEFSFILE_H_ */
