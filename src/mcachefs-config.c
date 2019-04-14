@@ -50,12 +50,26 @@ static struct fuse_opt mcachefs_opts[] = {
     FUSE_OPT_END
 };
 
+static void print_usage(const char* program_name) {
+    Info("Basic usage : %s {source mountpoint} {target mountpoint}\n", program_name);
+    Info("\twhere {source mountpoint} is the backend mount point to cache\n");
+    Info("\tand {target mountpoint} is the cached mount point exposed by %s\n", program_name);
+    Info("Optional arguments, provided as -o {argument}={value}[,{argument}={value}]\n");
+    Info("\tcache: local cache path (must be a directory), defaults to %s/{mount point}/cache/\n", DEFAULT_PREFIX);
+    Info("\tmetafile: local cache directory structure file, defaults to %s/{mount point}/metafile\n", DEFAULT_PREFIX);
+    Info("\tjournal: local cache update journal, defaults to %s/{mount point}/journal\n", DEFAULT_PREFIX);
+    Info("Example:\n");
+    Info("\t%s /mnt/backend /mnt/localcache -o cache=/tmp/mycache,journal=/tmp/cachejournal\n", program_name);
+}
+
 struct mcachefs_config *
 mcachefs_parse_config(int argc, char *argv[])
 {
+    const char* program_name = argv[0];
     if (argc < 3)
     {
         Err("Invalid number of arguments !\n");
+        print_usage(program_name);
         return NULL;
     }
 
@@ -88,6 +102,7 @@ mcachefs_parse_config(int argc, char *argv[])
     {
         Err("Could not parse arguments !");
         free(config);
+        print_usage(program_name);        
         return NULL;
     }
 
