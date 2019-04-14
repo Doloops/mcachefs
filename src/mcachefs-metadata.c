@@ -2,18 +2,17 @@
 #include "mcachefs-hash.h"
 #include "mcachefs-vops.h"
 #include "mcachefs-transfer.h"
+#include "mcachefs-journal.h"
 
 /**********************************************************************
  Metadata functions
  **********************************************************************/
 
-#if 1
-#define Log_M Log
-#else
-#define Log_M(...)
-#undef Log
-#define Log(...) do{} while(0)
-#endif
+#define Log_NOOP(...) do{} while(0)
+
+#define Log_H Log_NOOP
+#define Log_W Log_NOOP
+#define Log_M Log_NOOP
 
 #define MCACHEFS_METADATA_MAX_LEVELS 1024
 
@@ -397,13 +396,21 @@ mcachefs_metadata_close()
 void
 mcachefs_metadata_flush()
 {
-    int count_open;
+    int count_open, count_journal_entries;
 
     count_open = mcachefs_file_timeslices_count_open();
     if ( count_open > 0 )
     {
         Warn("Filesystem is busy ! %d files open !\n", count_open);
     }
+
+    count_journal_entries = mcachefs_journal_count_entries();
+    if ( count_journal_entries )
+    {
+        Err("Journal has %d entries ! Will not flush metadata, apply journal first !\n",
+            count_journal_entries);
+        return;    
+    } 
 
     Info("Flushing metadata :\n");
     mcachefs_metadata_lock();
@@ -721,12 +728,12 @@ mcachefs_metadata_find_hash(const char *path, hash_t hash, int path_size)
 {
     struct mcachefs_metadata_t *current = mcachefs_metadata_get_root();
 
-    Log("Finding hash for '%s' (up to %d chars) : hash=%llx \n", path,
+    Log_H("Finding hash for '%s' (up to %d chars) : hash=%llx \n", path,
         path_size, hash);
 
     while (current)
     {
-        Log("At current=%p (%s), hash=%llx\n", current, current->d_name,
+        Log_H("At current=%p (%s), hash=%llx\n", current, current->d_name,
             current->hash);
         if (hash < current->hash)
         {
@@ -743,7 +750,7 @@ mcachefs_metadata_find_hash(const char *path, hash_t hash, int path_size)
         {
             return current;
         }
-        Log("Got a collision with current=%llu:'%s' (hash=%llx), path=%s, hash=%llx!\n", current->id, current->d_name, current->hash, path, hash);
+        Log_H("Got a collision with current=%llu:'%s' (hash=%llx), path=%s, hash=%llx!\n", current->id, current->d_name, current->hash, path, hash);
         current = mcachefs_metadata_do_get(current->collision_next);
     }
     return NULL;
@@ -1127,14 +1134,14 @@ mcachefs_metadata_walk_down(struct mcachefs_metadata_t *father,
 
     for (; child; child = mcachefs_metadata_do_get(child->next))
     {
-        Log("walk_down, at child='%s' (%llu)\n", child->d_name, child->id);
+        Log_W("walk_down, at child='%s' (%llu)\n", child->d_name, child->id);
         if (child->hash == hash
             && strncmp(child->d_name, rpath, rpath_size) == 0)
         {
-            Log("==> Found it !\n");
+            Log_W("==> Found it !\n");
             if (rpath[rpath_size])
             {
-                Log("rpath(rpath_size)=%c\n", rpath[rpath_size]);
+                Log_W("rpath(rpath_size)=%c\n", rpath[rpath_size]);
                 father = child;
                 path_size += rpath_size + 1;
                 goto walk_down_start;
@@ -1701,11 +1708,9 @@ mcachefs_metadata_vops_remove_previous(struct mcachefs_metadata_t *mdata_root)
     for (mdata_child = mcachefs_metadata_get_child(mdata_root);
          mdata_child != NULL;)
     {
-        Log("[VOPS] Root @child %s\n", mdata_child->d_name);
-        if (strncmp(mdata_child->d_name, MCACHEFS_VOPS_DIR + 1, NAME_MAX) ==
-            0)
+        if (strncmp(mdata_child->d_name, MCACHEFS_VOPS_DIR + 1, NAME_MAX) == 0)
         {
-            Log("[VOPS] Remove previous VOPS entry %llu\n", mdata_child->id);
+            Log("[VOPS] Remove previous VOPS entry %s : %llu\n", mdata_child->d_name, mdata_child->id);
             mcachefs_metadata_remove_children(mdata_child);
             mcachefs_metadata_unlink_entry(mdata_child);
             mcachefs_metadata_remove_hash(mdata_child);

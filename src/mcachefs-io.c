@@ -61,7 +61,7 @@ mcachefs_read_vops(struct mcachefs_file_t *mfile, char *buf, size_t size,
     if (mfile->contents == NULL)
     {
         Log("Empty VOPS contents !\n");
-        return -EIO;
+        return 0;
     }
     if (offset >= mfile->contents_size)
     {

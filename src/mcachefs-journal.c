@@ -767,6 +767,21 @@ mcachefs_journal_drop()
     mcachefs_journal_unlock();
 }
 
+int
+mcachefs_journal_count_entries()
+{
+    struct stat st;
+
+    mcachefs_journal_lock();
+    if (stat(mcachefs_config_get_journal(), &st) == 0)
+    {
+        mcachefs_journal_unlock();
+        return st.st_size / sizeof(struct mcachefs_journal_entry_t);
+    }
+    mcachefs_journal_unlock();
+    return 0;
+}
+
 void
 mcachefs_journal_dump(struct mcachefs_file_t *mvops)
 {

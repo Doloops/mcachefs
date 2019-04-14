@@ -462,7 +462,7 @@ mcachefs_file_get_metadata(struct mcachefs_file_t *mfile)
     struct mcachefs_metadata_t *mdata;
     if (mfile->metadata_id == 0)
     {
-        Warn("mfile '%s' : could not fetch metadata !\n", mfile->path);
+        Warn("For file '%s' : could not get metadata !\n", mfile->path);
         if ( mfile->path != NULL )
         {
             mdata = mcachefs_metadata_find(mfile->path);

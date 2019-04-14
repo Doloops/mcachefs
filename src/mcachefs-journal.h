@@ -81,9 +81,16 @@ void mcachefs_journal_drop();
  */
 void mcachefs_notify_sync_end(const char *path, int success);
 
+
+/**
+ * Count actual number of entries in journal
+ */
+int mcachefs_journal_count_entries();
+
 /**
  * Dump current journal contents
  */
 void mcachefs_journal_dump(struct mcachefs_file_t *mvops);
 
 #endif /* MCACHEFSJOURNAL_H_ */
+
