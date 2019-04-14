@@ -491,3 +491,26 @@ mcachefs_file_timeslices_count_open()
     mcachefs_file_unlock();
     return count;
 }
+
+void
+mcachefs_file_timeslices_clear_metadata_id()
+{
+    int ts;
+
+    mcachefs_file_lock();
+    struct mcachefs_file_t* file;
+    for (ts = 0; ts < mcachefs_file_timeslice_nb + 2; ts++)
+    {
+        file = mcachefs_file_timeslices[ts];
+        while ( file != NULL )
+        {
+            if ( file->type == mcachefs_file_type_file || file->type == mcachefs_file_type_dir )
+            {
+                file->metadata_id = 0;
+            }
+            file = file->timeslice_next;
+        }
+    }
+    mcachefs_file_unlock();
+}
+

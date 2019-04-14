@@ -27,7 +27,7 @@ if not p.pid:
 while( not os.path.exists('%s/2/.mcachefs' % BASEPATH) ):
     time.sleep(1)
 
-time.sleep(10)
+# time.sleep(10)
 
 print "Create files"
 # create 300 files
@@ -36,11 +36,14 @@ for n in range(300):
 
 print "Open the last one"
 # open the last one!
-f=open('%s/2/%s' % (BASEPATH, n-1) )
+f=open('%s/2/%s' % (BASEPATH, "last_one"), "w")
 
 print "Flush metadata"
 # flush metadata
 os.system('echo flush_metadata >  %s/2/.mcachefs/action' % BASEPATH)
+
+# write some stuff in the open file
+f.write("Hello world !")
 
 # close the opened file. It should NOT crash!
 f.close()
@@ -51,12 +54,16 @@ print l
 if not l:
 	print "mcachefs crashed!"
 
+time.sleep(10);
+
+# unmount mcachefs
+os.system("fusermount -u %s/2" % BASEPATH)
+
 # kill gdb if it's still running!
 p.poll()
 if not p.returncode:
     p.kill()
 
-# unmount mcachefs
-os.system("fusermount -u %s/2" % BASEPATH)
 os.system('rm -rf '+BASEPATH+"/1")
 os.system('rm -rf '+BASEPATH+"/2")
+

@@ -101,11 +101,13 @@ mcachefs_fileid_get(struct mcachefs_metadata_t * mdata, const char *path,
         mfile = mcachefs_file_get(mdata->fh);
         if (mfile->metadata_id != mdata->id)
         {
-            Bug("Incoherent mdata !\n");
+            Bug("Inconsistent mdata id for path=%s ! mfile has %llu, mdata has %llu\n",
+                path, mfile->metadata_id, mdata->id);
         }
         if (mfile->type != type)
         {
-            Bug("Incoherent type !\n");
+            Bug("Inconsistent type for path=%s ! mfile has %d, but provided %d\n",
+                path, mfile->type, type);
         }
         mcachefs_file_lock_file(mfile);
         mfile->use++;
@@ -460,7 +462,21 @@ mcachefs_file_get_metadata(struct mcachefs_file_t *mfile)
     struct mcachefs_metadata_t *mdata;
     if (mfile->metadata_id == 0)
     {
-        Err("mfile '%s' : could not fetch metadata !\n", mfile->path);
+        Warn("mfile '%s' : could not fetch metadata !\n", mfile->path);
+        if ( mfile->path != NULL )
+        {
+            mdata = mcachefs_metadata_find(mfile->path);
+            if ( mdata != NULL )
+            {
+                Warn("mfile '%s' : found new metadata at %llu\n", mfile->path, mdata->id);
+                mfile->metadata_id = mdata->id;
+                return mdata;
+            }
+            else
+            {
+                Warn("Could not locate file '%s'\n", mfile->path);
+            }
+        }
         return NULL;
     }
 
@@ -479,7 +495,7 @@ mcachefs_file_update_metadata(struct mcachefs_file_t *mfile, off_t size,
 
     if (!mdata)
     {
-        Err("Could not extend size of '%s', no metadat found !\n",
+        Err("Could not extend size of '%s', no metadata found !\n",
             mfile->path);
         return;
     }

@@ -180,4 +180,10 @@ void mcachefs_file_timeslices_dump(struct mcachefs_file_t *mvops);
  */
 int mcachefs_file_timeslices_count_open();
 
+/**
+ * Clear all open file to metadata_id mappings
+ */
+void mcachefs_file_timeslices_clear_metadata_id();
+
 #endif /* MCACHEFSFILE_H_ */
+
