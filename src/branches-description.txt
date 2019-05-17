@@ -1,0 +1,16 @@
+
+  chown_fix			- a fix for chown problem (not reported)
+
+  devel  			- generic development branch
+
+  devel-merging-main		- merging main branch - temporary - should become devel
+
+  issue_5 			- fix for issue #5
+
+  master 			- should reflect the main depot
+
+  parallel-transfer		- working on parallel-transfer - not necessary anymore - will be deleted
+
+  production-vers-1.0		- the code version currently used in production
+
+  single-file-parallel-transfer	- parallel transfer of chunks of a single file - same functionality as lftp
