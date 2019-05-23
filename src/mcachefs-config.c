@@ -192,6 +192,9 @@ mcachefs_dump_config(struct mcachefs_config *config)
     Info("* Cache %s\n", config->cache);
     Info("* Metafile %s\n", config->metafile);
     Info("* Journal %s\n", config->journal);
+    Info("* Backup Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]);
+    Info("* Write Back Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK]);
+    Info("* Metadata Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]);
 
     int argc;
     for (argc = 0; argc < config->fuse_args.argc; argc++)
