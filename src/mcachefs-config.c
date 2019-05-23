@@ -47,17 +47,26 @@ static struct fuse_opt mcachefs_opts[] = {
     {"metafile=%s", offsetof(struct mcachefs_config, metafile), 0},
     {"journal=%s", offsetof(struct mcachefs_config, journal), 0},
     {"verbose=%lu", offsetof(struct mcachefs_config, verbose), 0},
+    {"backup-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]), 0},
+    {"write-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK]), 0},
+    {"metadata-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]), 0},
     FUSE_OPT_END
 };
 
 static void print_usage(const char* program_name) {
+    Info("\n");
     Info("Basic usage : %s {source mountpoint} {target mountpoint}\n", program_name);
     Info("\twhere {source mountpoint} is the backend mount point to cache\n");
     Info("\tand {target mountpoint} is the cached mount point exposed by %s\n", program_name);
+    Info("\n");
     Info("Optional arguments, provided as -o {argument}={value}[,{argument}={value}]\n");
-    Info("\tcache: local cache path (must be a directory), defaults to %s/{mount point}/cache/\n", DEFAULT_PREFIX);
-    Info("\tmetafile: local cache directory structure file, defaults to %s/{mount point}/metafile\n", DEFAULT_PREFIX);
-    Info("\tjournal: local cache update journal, defaults to %s/{mount point}/journal\n", DEFAULT_PREFIX);
+    Info("\tcache\t\t: local cache path (must be a directory), defaults to %s/{mount point}/cache/\n", DEFAULT_PREFIX);
+    Info("\tmetafile\t: local cache directory structure file, defaults to %s/{mount point}/metafile\n", DEFAULT_PREFIX);
+    Info("\tjournal\t\t: local cache update journal, defaults to %s/{mount point}/journal\n", DEFAULT_PREFIX);
+    Info("\tbackup-threads\t: number of threads to use for backup of files (download from source to target)\n");
+    Info("\twrite-threads\t: number of threads to use for write files back to source (when 'apply_journal' is called)\n");
+    Info("\tmetadata-threads: number of threads to use for retrieving metadata from source (retrieving folders and files information)\n");
+    Info("\n");
     Info("Example:\n");
     Info("\t%s /mnt/backend /mnt/localcache -o cache=/tmp/mycache,journal=/tmp/cachejournal\n", program_name);
 }
@@ -102,7 +111,7 @@ mcachefs_parse_config(int argc, char *argv[])
     {
         Err("Could not parse arguments !");
         free(config);
-        print_usage(program_name);        
+        print_usage(program_name);
         return NULL;
     }
 
@@ -203,7 +212,8 @@ mcachefs_set_current_config(struct mcachefs_config *config)
     int threadtype;
     for (threadtype = 0; threadtype < MCACHEFS_TRANSFER_TYPES; threadtype++)
     {
-        config->transfer_threads_type_nb[threadtype] = 1;
+        if ( ! config->transfer_threads_type_nb[threadtype] )
+          config->transfer_threads_type_nb[threadtype] = 1;
     }
 
     current_config = config;
