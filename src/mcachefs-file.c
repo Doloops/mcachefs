@@ -535,8 +535,8 @@ mcachefs_file_thread(void *arg)
         // Finally, unlock file lock
         mcachefs_file_unlock();
 
-        mcachefs_metadata_lock();
-        mcachefs_metadata_unlock();
+        // mcachefs_metadata_lock();
+        // mcachefs_metadata_unlock();
 
         sleep(mcachefs_config_get_file_thread_interval());
     }
