@@ -33,6 +33,8 @@ main(int argc, char *argv[])
 
     mcachefs_set_current_config(config);
 
+    mcachefs_config_run_pre_mount_cmd();
+
     mcachefs_file_timeslice_init_variables();
 
 
