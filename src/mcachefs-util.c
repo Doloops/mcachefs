@@ -86,10 +86,6 @@ mcachefs_check_fileincache(struct mcachefs_file_t *mfile,
   if ( metadata_st->st_size != st.st_size )
     return 0;
 
-  // if modification time differs, lets re-download it.
-  if ( metadata_st->st_mtime != st.st_mtime )
-    return 0;
-
   // if we got here, the file is correct, so return true
   return 1;
 }
