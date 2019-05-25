@@ -533,6 +533,7 @@ mcachefs_open(const char *path, struct fuse_file_info *info)
 {
     struct mcachefs_file_t *mfile;
     struct mcachefs_metadata_t *mdata;
+    struct stat st;
 
     mcachefs_file_type_t type = mcachefs_file_type_file;
 
@@ -567,6 +568,11 @@ mcachefs_open(const char *path, struct fuse_file_info *info)
     }
 
     info->fh = mcachefs_fileid_get(mdata, path, type);
+
+    st.st_size  = mdata->st.st_size;
+    st.st_atime = mdata->st.st_atime;
+    st.st_mtime = mdata->st.st_mtime;
+
     mcachefs_metadata_release(mdata);
 
     mfile = mcachefs_file_get(info->fh);
@@ -575,7 +581,7 @@ mcachefs_open(const char *path, struct fuse_file_info *info)
     {
         return -ENOMEM;
     }
-    return mcachefs_open_mfile(mfile, info, type);
+    return mcachefs_open_mfile(mfile, info, type, &st);
 }
 
 static int

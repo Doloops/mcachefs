@@ -10,7 +10,8 @@
 
 int
 mcachefs_open_mfile(struct mcachefs_file_t *mfile,
-                    struct fuse_file_info *info, mcachefs_file_type_t type);
+                    struct fuse_file_info *info, mcachefs_file_type_t type,
+                    struct stat *metadata_st);
 
 int
 mcachefs_read_mfile(struct mcachefs_file_t *mfile, char *buf, size_t size,

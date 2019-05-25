@@ -14,7 +14,8 @@ static const int WAIT_CACHE_INTERVAL = 5 * 1000 * 1000;
 
 int
 mcachefs_open_mfile(struct mcachefs_file_t *mfile,
-                    struct fuse_file_info *info, mcachefs_file_type_t type)
+                    struct fuse_file_info *info, mcachefs_file_type_t type,
+                    struct stat *metadata_st)
 {
     if (type == mcachefs_file_type_file)
     {
@@ -24,7 +25,7 @@ mcachefs_open_mfile(struct mcachefs_file_t *mfile,
         if (mcachefs_config_get_read_state() != MCACHEFS_STATE_NOCACHE
             || __IS_WRITE(info->flags))
         {
-            mcachefs_transfer_backfile(mfile);
+            mcachefs_transfer_backfile(mfile, metadata_st);
         }
         else
         {
@@ -32,7 +33,7 @@ mcachefs_open_mfile(struct mcachefs_file_t *mfile,
                 mfile->path, mcachefs_config_get_read_state());
             if (mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED)
             {
-                if (mcachefs_fileincache(mfile->path))
+                if (mcachefs_check_fileincache(mfile, metadata_st))
                 {
                     mfile->cache_status = MCACHEFS_FILE_BACKING_DONE;
                 }

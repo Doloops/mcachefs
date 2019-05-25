@@ -44,7 +44,8 @@ void *mcachefs_transfer_thread(void *arg);
  * Backing frontend
  */
 int
-mcachefs_transfer_backfile(struct mcachefs_file_t *mfile)
+mcachefs_transfer_backfile(struct mcachefs_file_t *mfile,
+                           struct stat *metadata_st)
 {
     /**
      * Called from mcachefs.c : mcachefs_fileid_get() with the mcachefs_file_lock held
@@ -58,7 +59,7 @@ mcachefs_transfer_backfile(struct mcachefs_file_t *mfile)
         return 0;
     }
 
-    if (mcachefs_fileincache(mfile->path))
+    if (mcachefs_check_fileincache(mfile, metadata_st))
     {
         mfile->cache_status = MCACHEFS_FILE_BACKING_DONE;
         Log("Backing ok for file '%s' (status set to %d)\n", mfile->path,
