@@ -47,6 +47,11 @@ static struct fuse_opt mcachefs_opts[] = {
     {"metafile=%s", offsetof(struct mcachefs_config, metafile), 0},
     {"journal=%s", offsetof(struct mcachefs_config, journal), 0},
     {"verbose=%lu", offsetof(struct mcachefs_config, verbose), 0},
+    {"backup-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]), 0},
+    {"write-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK]), 0},
+    {"metadata-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]), 0},
+    {"pre-mount-cmd=%s", offsetof(struct mcachefs_config, pre_mount_cmd), 0},
+    {"pre-umount-cmd=%s", offsetof(struct mcachefs_config, pre_umount_cmd), 0},
     FUSE_OPT_END
 };
 
@@ -55,9 +60,15 @@ static void print_usage(const char* program_name) {
     Info("\twhere {source mountpoint} is the backend mount point to cache\n");
     Info("\tand {target mountpoint} is the cached mount point exposed by %s\n", program_name);
     Info("Optional arguments, provided as -o {argument}={value}[,{argument}={value}]\n");
-    Info("\tcache: local cache path (must be a directory), defaults to %s/{mount point}/cache/\n", DEFAULT_PREFIX);
-    Info("\tmetafile: local cache directory structure file, defaults to %s/{mount point}/metafile\n", DEFAULT_PREFIX);
-    Info("\tjournal: local cache update journal, defaults to %s/{mount point}/journal\n", DEFAULT_PREFIX);
+    Info("\tcache\t\t: local cache path (must be a directory), defaults to %s/{mount point}/cache/\n", DEFAULT_PREFIX);
+    Info("\tmetafile\t: local cache directory structure file, defaults to %s/{mount point}/metafile\n", DEFAULT_PREFIX);
+    Info("\tjournal\t\t: local cache update journal, defaults to %s/{mount point}/journal\n", DEFAULT_PREFIX);
+    Info("\tbackup-threads\t: number of threads to use for backup of files (download from source to target)\n");
+    Info("\twrite-threads\t: number of threads to use for write files back to source (when 'apply_journal' is called)\n");
+    Info("\tmetadata-threads: number of threads to use for retrieving metadata from source (retrieving folders and files information)\n");
+    Info("\tpre-mount-cmd\t: run a command right before mounting. This can be used to auto-mount the source folder.\n");
+    Info("\tpre-umount-cmd\t: run a command right before unmounting. If you used pre-mount-cmd to mount the source, use this to umount it.\n");
+    Info("\n");
     Info("Example:\n");
     Info("\t%s /mnt/backend /mnt/localcache -o cache=/tmp/mycache,journal=/tmp/cachejournal\n", program_name);
 }
@@ -102,7 +113,7 @@ mcachefs_parse_config(int argc, char *argv[])
     {
         Err("Could not parse arguments !");
         free(config);
-        print_usage(program_name);        
+        print_usage(program_name);
         return NULL;
     }
 
@@ -172,6 +183,18 @@ set_default_config(struct mcachefs_config *config)
         snprintf(config->journal, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX,
                  normalized_mp, "journal");
     }
+
+    if (config->pre_mount_cmd == NULL)
+    {
+        config->pre_mount_cmd = (char *) malloc(8);
+        snprintf(config->pre_mount_cmd, 8, "<none>");
+    }
+
+    if (config->pre_umount_cmd == NULL)
+    {
+        config->pre_umount_cmd = (char *) malloc(8);
+        snprintf(config->pre_umount_cmd, 8, "<none>");
+    }
 }
 
 void
@@ -183,6 +206,11 @@ mcachefs_dump_config(struct mcachefs_config *config)
     Info("* Cache %s\n", config->cache);
     Info("* Metafile %s\n", config->metafile);
     Info("* Journal %s\n", config->journal);
+    Info("* Backup Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]);
+    Info("* Write Back Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK]);
+    Info("* Metadata Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]);
+    Info("* Pre Mount Command %s\n", config->pre_mount_cmd);
+    Info("* Pre UMount Command %s\n", config->pre_umount_cmd);
 
     int argc;
     for (argc = 0; argc < config->fuse_args.argc; argc++)
@@ -416,4 +444,21 @@ mcachefs_config_set_cache_prefix(const char *prefix)
     current_config->cache_prefix = strdup(prefix);
 
     trim_last_separator(current_config->cache_prefix);
+}
+
+int mcachefs_config_run_cmd(const char *cmd)
+{
+  if (strcmp(cmd,"<none>")!=0)
+    return system( cmd );
+  return 0;
+}
+
+int mcachefs_config_run_pre_mount_cmd()
+{
+  return mcachefs_config_run_cmd(current_config->pre_mount_cmd);
+}
+
+int mcachefs_config_run_pre_umount_cmd()
+{
+  return mcachefs_config_run_cmd(current_config->pre_umount_cmd);
 }
