@@ -9,6 +9,8 @@
 #define MCACHEFS_TRANSFER_TYPE_WRITEBACK 1
 #define MCACHEFS_TRANSFER_TYPE_METADATA  2
 
+extern const int mcachefs_file_timeslice_nb;
+
 struct mcachefs_config
 {
     /*

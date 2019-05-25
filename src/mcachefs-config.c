@@ -337,7 +337,7 @@ mcachefs_config_get_file_ttl()
     return current_config->file_ttl;
 }
 
-extern const int mcachefs_file_timeslice_nb;
+
 
 void
 mcachefs_config_set_file_ttl(int ttl)
