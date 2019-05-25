@@ -66,6 +66,36 @@ mcachefs_fileincache(const char *path)
 }
 
 int
+mcachefs_check_fileincache(struct mcachefs_file_t *mfile,
+                           struct stat *metadata_st)
+{
+  char *cachepath;
+  struct stat st;
+  int res;
+
+  // check if cache file exists
+  cachepath = mcachefs_makepath_cache(mfile->path);
+  res = lstat(cachepath, &st);
+  free(cachepath);
+  // file doesn't exist, so return false and download it!
+  if ( ! res == 0 )
+    return 0;
+
+  // if the file size differs from cache file and metadata, return
+  // false so we can re-download it
+  if ( metadata_st->st_size != st.st_size )
+    return 0;
+
+  // if modification time differs, lets re-download it.
+  if ( metadata_st->st_mtime != st.st_mtime )
+    return 0;
+
+  // if we got here, the file is correct, so return true
+  return 1;
+}
+
+
+int
 mcachefs_createpath(const char *prefix, const char *cpath, int lastIsDir)
 {
     int prefixfd, tempfd, res;

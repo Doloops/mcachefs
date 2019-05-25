@@ -36,6 +36,13 @@ int mcachefs_createfile_cache(const char *path, mode_t mode);
  */
 int mcachefs_fileincache(const char *path);
 
+/**
+ * the same as mcachefs_fileincache, but with some extra logic
+ * to flag broken cached files to be re-downloaded
+ */
+int mcachefs_check_fileincache(struct mcachefs_file_t *mfile,
+                               struct stat *metadata_st);
+
 char *mcachefs_split_path(const char *path, const char **lname);
 
 #endif /* MCACHEFSUTIL_H_ */

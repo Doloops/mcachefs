@@ -27,7 +27,8 @@ extern sem_t mcachefs_backing_sem;
  * Transfer backing frontend
  * Call for file backup. If the backup exists and is fresh enough, do nothing, otherwise wakeup the backingthread.
  */
-int mcachefs_transfer_backfile(struct mcachefs_file_t *mfile);
+int mcachefs_transfer_backfile(struct mcachefs_file_t *mfile,
+                               struct stat *metadata_st);
 
 /**
  * Writeback frontend
