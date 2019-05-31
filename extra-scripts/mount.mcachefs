@@ -1,0 +1,62 @@
+#!/bin/bash
+# ========================================================================================================
+#
+# put this script in /sbin/ and you can mount using
+# the mount command, passing mcachefs as filesystem 
+# type with -t, or you can set mcachefs in autofs
+# by putting this:
+#
+# /backed_folder -fstype=mcachefs,allow_other,auto_umount   :/source_folder
+#
+# in an autofs file, like /etc/auto.mcachefs
+# and adding it to autofs by adding this line to
+# /etc/auto.master:
+#
+# /-	/etc/auto.mcachefs --timeout=0
+#
+# this is a demonstration script, so you can edit
+# it as you want.
+#
+# ========================================================================================================
+
+# I want to run mcachefs in foreground and log it, 
+# so I setup this log file here.
+log=/tmp/mcachefs/$(echo $2 | sed 's/\//-/g').log
+echo "" > $log
+
+# I want to reset the metadata file everytime I mount it, 
+# so mcachefs will reflect any changes in the source folder.
+# To reset the metadata, we can't have local changes, so 
+# I remove the journal file here before mounting so I can 
+# flush_metadata after mounting. I don't care about local 
+# changes... if you do, remove this line!
+rm /tmp/mcachefs/$(echo $2 | sed 's/\///' | sed 's/\//-/g')/journal*
+
+# mount it - $@ will bring any options from the auto.mcachefs file
+# as well as the source and target folder. I remove the -n
+# option that autofs adds by itself, since mcachefs doesn't use it
+# I also call mcachefs with -f to run in foreground, so I log 
+# debug messages in the $log file
+# Here I also use pre-mount-cmd and pre-umount-cmd to 
+# mount a remote system using sshfs in the source folder,
+# right before mcachefs mounts itself. 
+# If mcachefs is unmounted, it will call the script to 
+# umount sshfs as well.
+/usr/bin/mcachefs -f $(echo $@ | sed 's/-n//g') \
+	-o allow_other \
+	-o auto_unmount \
+	-o pre-mount-cmd="/root/atomo_mount $1" \
+	-o pre-umount-cmd="/root/atomo_mount $1 --umount" \
+> $log 2>&1 &
+
+# since I put mcachefs in background using '&', we need
+# to find out if it finished mounting or not. 
+# to do that, we wait for the "Serving read-write !" 
+# message in the log. 
+while [ "$(grep 'Serving read-write !' $log)" == "" ] ; do
+	sleep 1
+done
+
+# so now everything is mounted and working, so 
+# I flush the metadata now!
+echo flush_metadata > $2/.mcachefs/action
