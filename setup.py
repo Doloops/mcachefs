@@ -43,7 +43,10 @@ def git_pull():
 	# check if this setup.py changed... if so, reboot so we can run the updated one
 	cmd = "cd %s ; diff ./setup.py /dev/shm/setup.py" % CD
 	if ''.join(os.popen(cmd).readline()).strip():
-	    os.system('cd src && make install')
+	    install()
+
+def install():
+	os.system( 'cd %s/src && make clean && make install' % os.path.dirname( os.path.abspath(__file__) ) )
 
 
 # void main()
@@ -53,7 +56,7 @@ if len(sys.argv) == 1:
 	print '''
 		to install files to the system, just run:
 
-			setup.py --install
+			setup.py -i
 
 		use -n to dryrun
 		use -p to do a git fetch/reset/pull and make the local copy identical

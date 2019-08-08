@@ -27,4 +27,4 @@ clean:
 	$(CC) -c $(CFLAGS) $(MODULECOMPILEFLAGS) -o $@ $<
 
 install: all
-	sudo cp mcachefs /usr/bin/mcachefs
+	cp mcachefs /usr/bin/mcachefs
