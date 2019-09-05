@@ -30,7 +30,7 @@ mcachefs_open_mfile(struct mcachefs_file_t *mfile,
         {
             Log("MCachefs : skipping backup of file %s, state=%d\n",
                 mfile->path, mcachefs_config_get_read_state());
-            if (mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED)
+            if (mfile->cache_status == MCACHEFS_FILE_BACKING_NONE)
             {
                 if (mcachefs_fileincache(mfile->path))
                 {
@@ -96,7 +96,8 @@ mcachefs_read_wait_accessible(struct mcachefs_file_t *mfile, size_t size,
             use_real = 1;
             break;
         }
-        if (mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED
+        if (mfile->cache_status == MCACHEFS_FILE_BACKING_NONE
+			|| mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED
             || mfile->cache_status == MCACHEFS_FILE_BACKING_ERROR)
         {
             use_real = 1;

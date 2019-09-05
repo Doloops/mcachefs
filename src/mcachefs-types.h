@@ -146,10 +146,11 @@ struct mcachefs_file_t
  * Various states and enums
  */
 
-#define MCACHEFS_FILE_BACKING_ASKED       0
-#define MCACHEFS_FILE_BACKING_IN_PROGRESS 1
-#define MCACHEFS_FILE_BACKING_DONE        2
-#define MCACHEFS_FILE_BACKING_ERROR       3
+#define MCACHEFS_FILE_BACKING_NONE        0
+#define MCACHEFS_FILE_BACKING_ASKED       1
+#define MCACHEFS_FILE_BACKING_IN_PROGRESS 2
+#define MCACHEFS_FILE_BACKING_DONE        3
+#define MCACHEFS_FILE_BACKING_ERROR       4
 
 /**
  * States of the backing mechanism

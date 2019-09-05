@@ -384,6 +384,9 @@ mcachefs_file_timeslices_dump_ts(struct mcachefs_file_t *mvops,
 
             switch (mfile->cache_status)
             {
+            case MCACHEFS_FILE_BACKING_NONE:
+                __VOPS_WRITE(mvops, ",backing=none");
+                break;
             case MCACHEFS_FILE_BACKING_ASKED:
                 __VOPS_WRITE(mvops, ",backing=asked");
                 break;

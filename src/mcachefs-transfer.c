@@ -33,9 +33,8 @@ struct mcachefs_transfer_queue_t *mcachefs_transfer_queue_head = NULL,
 
 sem_t mcachefs_transfer_sem[MCACHEFS_TRANSFER_TYPES];
 
-struct mcachefs_file_t *mcachefs_transfer_get_next_file_to_back_locked(int
-                                                                       type);
-void mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile);
+struct mcachefs_file_t *mcachefs_transfer_get_next_file_to_back_locked(int transfer_type);
+void mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile, int transfer_type);
 void *mcachefs_transfer_thread(void *arg);
 
 #define TIME_DIFF(NOW, LAST) ((NOW.tv_sec-LAST.tv_sec)*1000000 + (NOW.tv_usec-LAST.tv_usec))
@@ -51,7 +50,9 @@ mcachefs_transfer_backfile(struct mcachefs_file_t *mfile)
      */
     mcachefs_file_lock_file(mfile);
 
-    if (mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS)
+    if (mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED
+		|| mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS
+		|| mfile->cache_status == MCACHEFS_FILE_BACKING_DONE )
     {
         Log("Backing in progress for file '%s'\n", mfile->path);
         mcachefs_file_unlock_file(mfile);
@@ -270,7 +271,7 @@ mcachefs_transfer_thread(void *arg)
 
         Log("Transfer file '%s'\n", mfile->path);
 
-        mcachefs_transfer_do_transfer(mfile);
+        mcachefs_transfer_do_transfer(mfile, type);
         mcachefs_transfer_lock();
         me->currentfile = NULL;
         mcachefs_transfer_unlock();
@@ -285,12 +286,11 @@ mcachefs_transfer_queue_file(struct mcachefs_file_t *mfile, int type)
     struct mcachefs_transfer_queue_t *transfer;
     mcachefs_transfer_lock();
 
-    for (transfer = mcachefs_transfer_queue_head; transfer; transfer
-         = transfer->next)
+    for (transfer = mcachefs_transfer_queue_head; transfer; transfer = transfer->next)
     {
         if (transfer->mfile == mfile)
         {
-            Err("Already asked transfer for file '%s'\n", mfile->path);
+            Err("Already asked transfer for file '%s', type=%d\n", mfile->path, type);
             mcachefs_transfer_unlock();
             return -EEXIST;
         }
@@ -389,9 +389,8 @@ mcachefs_transfer_do_writeback(struct mcachefs_file_t *mfile,
 int mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking);
 
 void
-mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile)
+mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile, int transfer_type)
 {
-    int tobacking;
     off_t size;
     struct mcachefs_metadata_t *mdata;
     struct utimbuf timbuf;
@@ -424,29 +423,38 @@ mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile)
     mcachefs_metadata_release(mdata);
 
     mcachefs_file_lock_file(mfile);
-    tobacking = (mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS);
 
-    mfile->transfer.tobacking = tobacking;
-    mfile->transfer.total_size = size;
+	mfile->transfer.tobacking = (transfer_type == MCACHEFS_TRANSFER_TYPE_BACKUP);
+	mfile->transfer.total_size = size;
     mfile->transfer.transfered_size = 0;
     mfile->transfer.rate = 0;
     mfile->transfer.total_time = 0;
     mcachefs_file_unlock_file(mfile);
 
-    if (tobacking)
+    if (transfer_type == MCACHEFS_TRANSFER_TYPE_BACKUP)
     {
         mcachefs_transfer_do_backing(mfile);
     }
-    else
+    else if (transfer_type == MCACHEFS_TRANSFER_TYPE_WRITEBACK)
     {
         mcachefs_transfer_do_writeback(mfile, &timbuf);
     }
+    else
+    {
+		Err("Invalid transfer for path='%s', cache_status=%d, transfer_type=%d\n", mfile->path, mfile->cache_status, transfer_type);
+	}
 }
 
 void
 mcachefs_transfer_do_backing(struct mcachefs_file_t *mfile)
 {
     char *backingpath;
+
+    if (mcachefs_fileincache(mfile->path))
+	{
+		Err("File '%s' already in cache !\n", mfile->path);
+		return;
+	}
     if (mcachefs_createfile_cache(mfile->path, 0644))
     {
         Err("Could not create backing path for '%s' !\n", mfile->path);
