@@ -14,6 +14,8 @@
 #define Log_W Log_NOOP
 #define Log_M Log_NOOP
 
+#define Log_MMap Log_NOOP
+
 #define MCACHEFS_METADATA_MAX_LEVELS 1024
 
 #define __MCACHEFS_METADATA_HAS_FILLENTRY
@@ -33,7 +35,7 @@
 
 #define MCACHEFS_METADATA_BLOCK_SIZE (MCACHEFS_METADATA_ENTRY_SIZE * MCACHEFS_METADATA_BLOCK_ENTRY_COUNT)
 
-static const char *MCACHEFS_METADATA_MAGIC = "mcachefs.metafile.1c";
+static const char *MCACHEFS_METADATA_MAGIC = "mcachefs.metafile.1d.crc64";
 
 DIR *fdopendir(int __fd);
 
@@ -92,13 +94,14 @@ mcachefs_metadata_do_get(mcachefs_metadata_id id)
     {
         mcachefs_metadata_mmap_block(block);
     }
-
-    metadata_map[block].last_used = mcachefs_get_jiffy_sec();
+    time_t now = mcachefs_get_jiffy_sec();
+    if ( metadata_map[block].last_used != now )
+    {
+        metadata_map[block].last_used = now;
+    }
     struct mcachefs_metadata_t *meta =
         (struct mcachefs_metadata_t *) ((unsigned long)
-                                        metadata_map[block].map +
-                                        (block_idx *
-                                         MCACHEFS_METADATA_ENTRY_SIZE));
+        metadata_map[block].map + (block_idx * MCACHEFS_METADATA_ENTRY_SIZE));
 
     return meta;
 }
@@ -222,7 +225,7 @@ mcachefs_metadata_mmap_block(mcachefs_metadata_id block)
         Err("Could not open metadata ! Err=%d:%s\n", errno, strerror(errno));
         exit(-1);
     }
-    Log("MMapped block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n",
+    Log_MMap("MMapped block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n",
         block, MCACHEFS_METADATA_BLOCK_SIZE, (unsigned long) block_offset,
         rmap, ((long) rmap + (long) MCACHEFS_METADATA_BLOCK_SIZE));
     metadata_map[block].map = rmap;
@@ -262,15 +265,14 @@ mcachefs_metadata_release_all(int forceUnmap)
         {
             continue;
         }
-        int res =
-            munmap(metadata_map[block].map, MCACHEFS_METADATA_BLOCK_SIZE);
+        int res = munmap(metadata_map[block].map, MCACHEFS_METADATA_BLOCK_SIZE);
         if (res)
         {
             Bug("Could not munmap !");
         }
         metadata_map[block].map = NULL;
         metadata_map_mmap_count--;
-        Log("MUnMap block %llu, age=%lu, count=%llu, total=%llu\n", block,
+        Log_MMap("MUnMap block %llu, age=%lu, count=%llu, total=%llu\n", block,
             age, metadata_map_mmap_count, nbblocks);
     }
     Log("MUnMap : Count=%llu->%llu, total=%llu\n",
@@ -2055,6 +2057,9 @@ static char dspace[1024];
 
 static unsigned long mcachefs_dump_mdata_tree_nb = 0;
 static unsigned long mcachefs_dump_mdata_hashtree_nb = 0;
+static unsigned long mcachefs_dump_mdata_hashtree_collision = 0;
+static unsigned long mcachefs_dump_mdata_hashtree_chcount[3];
+static int mcachefs_dump_mdata_hashtree_max_depth = 0;
 
 void
 mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops,
@@ -2087,6 +2092,10 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
 {
     mcachefs_dump_mdata_hashtree_nb++;
     __SET_DSPACE(depth);
+    if ( mcachefs_dump_mdata_hashtree_max_depth < depth )
+    {
+        mcachefs_dump_mdata_hashtree_max_depth = depth;
+    }
 
     __VOPS_WRITE(mvops,
                  "%s[%llu], hash=%llx : '%s' (region [%llx:%llx]), ulr=%llu/%llu/%llu, coll=n:%llu/p:%llu\n",
@@ -2103,19 +2112,30 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
         __VOPS_WRITE(mvops, "==> corrupted on max !\n");
     }
 
+    int chcount = 0;
     if (mdata->left)
+    {
         mcachefs_metadata_dump_hash(mvops,
                                     mcachefs_metadata_do_get(mdata->left),
                                     depth + 1, min, mdata->hash - 1);
+        chcount++;
+    }
     if (mdata->right)
+    {
         mcachefs_metadata_dump_hash(mvops,
                                     mcachefs_metadata_do_get(mdata->right),
                                     depth + 1, mdata->hash, max);
+        chcount++;
+    }
+    mcachefs_dump_mdata_hashtree_chcount[chcount]++;
     if (mdata->collision_next)
+    {
         mcachefs_metadata_dump_hash(mvops,
                                     mcachefs_metadata_do_get
                                     (mdata->collision_next), depth,
                                     mdata->hash - 1, mdata->hash + 1);
+        mcachefs_dump_mdata_hashtree_collision++;
+    }
 }
 
 void
@@ -2125,6 +2145,10 @@ mcachefs_metadata_dump(struct mcachefs_file_t *mvops)
 
     mcachefs_dump_mdata_tree_nb = 0;
     mcachefs_dump_mdata_hashtree_nb = 0;
+    mcachefs_dump_mdata_hashtree_max_depth = 0;
+    mcachefs_dump_mdata_hashtree_chcount[0] = 0;
+    mcachefs_dump_mdata_hashtree_chcount[1] = 0;
+    mcachefs_dump_mdata_hashtree_chcount[2] = 0;
 
     __VOPS_WRITE(mvops,
                  "--------------- Metadata tree root=%s -----------------\n",
@@ -2136,7 +2160,10 @@ mcachefs_metadata_dump(struct mcachefs_file_t *mvops)
                  mcachefs_metadata_get_root()->d_name);
     mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_get_root(), 0, 0,
                                 ~((hash_t) 0));
-
+    __VOPS_WRITE(mvops, "---- Final count=%lu, max depth=%d, nb children(0=%lu, 1=%lu, 2=%lu), collisions=%lu\n", 
+        mcachefs_dump_mdata_hashtree_nb, mcachefs_dump_mdata_hashtree_max_depth,
+        mcachefs_dump_mdata_hashtree_chcount[0], mcachefs_dump_mdata_hashtree_chcount[1], mcachefs_dump_mdata_hashtree_chcount[2],
+        mcachefs_dump_mdata_hashtree_collision);
     if (mcachefs_dump_mdata_tree_nb != mcachefs_dump_mdata_hashtree_nb)
     {
         Err("Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_tree_nb=%lu\n", mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
