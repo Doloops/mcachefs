@@ -86,7 +86,7 @@ mcachefs_parse_config(int argc, char *argv[])
     config->write_state = MCACHEFS_WRSTATE_CACHE;
     config->file_thread_interval = 1;
     config->file_ttl = 300;
-    config->metadata_map_ttl = 120;
+    config->metadata_map_ttl = 1800;
     config->transfer_max_rate = 100000;
     config->cleanup_cache_age = 30 * 24 * 3600;
     config->cleanup_cache_prefix = NULL;

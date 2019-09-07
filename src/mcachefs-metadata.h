@@ -12,6 +12,9 @@ static const mcachefs_fh_t mcachefs_fh_t_NULL = ~((mcachefs_fh_t) 0);
 static const mcachefs_metadata_id mcachefs_metadata_id_EMPTY =
     ~((mcachefs_metadata_id) 0);
 
+#define BLACK 0
+#define RED 1
+
 struct mcachefs_metadata_t
 {
     hash_t hash;
@@ -25,6 +28,8 @@ struct mcachefs_metadata_t
     mcachefs_metadata_id up;    //< Hashtree father
     mcachefs_metadata_id left;  //< Hashtree left part, where all hashes are stricly inf
     mcachefs_metadata_id right; //< Hashtree right part, where hashes are equal or sup (collision mgmt)
+
+    int color;
 
     mcachefs_metadata_id collision_next;        //< Collision : next in the linked-list of colliders
     mcachefs_metadata_id collision_previous;    //< Collision : previous in the linked-list of colliders
