@@ -41,7 +41,7 @@ void mcachefs_vops_parse(struct mcachefs_file_t *mfile);
 void mcachefs_vops_cleanup_vops(struct mcachefs_file_t *mfile);
 
 /**
- * Get the size of the currently openned vops file, or default size if none openned.
+ * Get the size of the currently openned vops file, or default size if none opened.
  */
 off_t mcachefs_vops_getsize(const char *path);
 
