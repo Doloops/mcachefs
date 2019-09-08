@@ -38,27 +38,6 @@ uint32_t crc32_bitwise(const void* data, size_t length, uint32_t previousCrc32)
 }
 #endif
 
-#ifdef __MCACHEFS_HASH_USE_CRC32_EXT
-
-#include "Crc32.h"
-
-
-hash_t
-continueHashPartial(hash_t crc, const char *str, int sz)
-{
-    if ( sz == - 1 )
-    {
-        sz = 0;
-        const char* s = str;
-        while (*s++)
-            sz++;
-    }
-    hash_t result = crc32_fast((void*)str, (size_t) sz, crc);
-    Log("crc32(%s, %d, %lx) = %lx\n", str, sz, crc, result);
-    return result;
-}
-#endif
-
 #ifdef __MCACHEFS_HASH_USE_CRC64
 
 #include "crc64table.h"
