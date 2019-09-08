@@ -519,6 +519,88 @@ mcachefs_metadata_allocate()
     return next->id;
 }
 
+#if 1
+int 
+mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
+                         int path_size)
+{
+    static const int MAX_LEVEL = 128;
+    Log("Equals : mdata=%p:%s (father=%llu), path=%s, path_size=%d\n",
+        mdata, mdata->d_name, mdata->father, path, path_size);
+    const char* namestack[MAX_LEVEL];
+    int levels = 0;
+    
+    struct mcachefs_metadata_t *current = mdata;
+    while ( current->father )
+    {
+        namestack[levels] = current->d_name;
+        levels++;
+        if ( levels == MAX_LEVEL )
+        {
+            Bug("Maximum level of hierarchy (%d) reached in path '%s'!\n", 
+                levels, path);
+        }
+        current = mcachefs_metadata_get(current->father);
+    }
+#if 0
+    for ( int l = 0 ; l < levels ; l++ )
+    {
+        Log("l=%d, name=%s\n", l, namestack[l]);
+    }
+#endif
+    
+    int current_level = levels - 1, path_idx = 0;
+    const char* current_name = namestack[current_level];
+    const char* cpath = path;
+    cpath++;    
+    for ( ; *cpath ; cpath++ )
+    {
+        path_idx++;
+        if ( path_idx == path_size )
+        {
+            Log("Perfect match, even if path_size is partial !\n");
+            return 1;
+        }
+        if ( !*current_name )
+        {
+            if ( *cpath != '/' )
+            {
+                Log("Should have a '/' separator here, probably a collision !\n");
+                Bug(".");
+                return 0;
+            }
+            if ( current_level > 0 )
+            {
+                current_level--;
+                current_name = namestack[current_level];
+                continue;
+            }
+            else
+            {
+                Log("Out of levels, probably a collision !\n");
+                Bug(".");
+                return 0;
+            }
+        }
+        
+        if ( *cpath != *current_name )
+        {
+            Log("Colliding !\n");
+            Bug("."); 
+            return 0;
+        }
+        current_name++;
+    }
+    if ( current_level == 0 && !*current_name )
+    {
+        Log("Found a perfect match !!\n");
+        return 1;
+    }
+    Log("Colliding ! remaining level=%d, current_name=%s\n", current_level, current_name);
+    Bug(".");
+    return 0;
+}
+#else
 int
 mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
                          int path_size)
@@ -555,8 +637,8 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
     }
     Bug("Shall not be here.\n");
     return -1;
-    // return mcachefs_metadata_equals ( mcachefs_metadata_get ( mdata->father ), path, path_start );
 }
+#endif
 
 /**
  * **************************************** HASH FUNCTIONS *******************************************
@@ -800,9 +882,7 @@ mcachefs_metadata_insert_hash(struct mcachefs_metadata_t *newmeta)
 
 #if 0
     Log("Dumping metadata\n");
-    mcachefs_metadata_unlock();
-    mcachefs_metadata_dump(NULL);
-    mcachefs_metadata_lock();
+    mcachefs_metadata_dump_locked(NULL);
 #endif
 }
 
@@ -880,23 +960,26 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
     right = mcachefs_metadata_do_get(mdata->right);
 
     
-
+    int left_length = 0;
     struct mcachefs_metadata_t *child_left;
     for (child_left = left; child_left->right; child_left = mcachefs_metadata_do_get(child_left->right))
-    {}
-    // We know that child_left has no right, and is the maximal vaue of the left branch
+    { left_length++; }
+    // We know that child_left has no right, and is the maximal value of the left branch
 
     // mdata will be replaced by mdata->left, and mdata->right will go at the rightest part of left
 
     int otherchildisleft;
     struct mcachefs_metadata_t* grandchild, *otherchild;
-    if (right->color == RED && child_left->color == RED)
-    {
-        struct mcachefs_metadata_t  *child_right;
-        for (child_right = right ; child_right->left ; child_right = mcachefs_metadata_do_get(child_right->left))
-        {}
+
+    int right_length = 0;
+    struct mcachefs_metadata_t  *child_right;
+    for (child_right = right ; child_right->left ; child_right = mcachefs_metadata_do_get(child_right->left))
+    { right_length++; }
         // We know that child_right has no left, and is the minimal value of the right branch
-        
+
+    Log("Measured left_length=%d, right_length=%d\n", left_length, right_length);
+    if ( right->color == RED && child_left->color == RED ) // || right_length > left_length ) // )
+    {
         // mdata will be replaced by mdata->right, and mdata->left will go at the leftest part of right
         if ( left->color == RED && child_right->color == RED )
         {
@@ -953,11 +1036,10 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
 void
 mcachefs_metadata_remove_hash(struct mcachefs_metadata_t *mdata)
 {
-    mcachefs_metadata_dump_locked(NULL);
-    
     mcachefs_metadata_do_remove_hash(mdata);
-    
+#if 0   
     mcachefs_metadata_dump_locked(NULL);
+#endif
 }
 
 struct mcachefs_metadata_t *
@@ -1567,8 +1649,10 @@ mcachefs_metadata_remove_children(struct mcachefs_metadata_t *metadata)
         Log("==> JUMP to next=%llu\n", next ? next->id : 0);
         current = next;
     }
-
     metadata->child = 0;
+#if PARANOID
+    mcachefs_metadata_dump_locked(NULL);
+#endif
 }
 
 int
@@ -2365,6 +2449,10 @@ static unsigned long mcachefs_dump_mdata_hashtree_nb = 0;
 static unsigned long mcachefs_dump_mdata_hashtree_collision = 0;
 static unsigned long mcachefs_dump_mdata_hashtree_chcount[3];
 static int mcachefs_dump_mdata_hashtree_max_depth = 0;
+static int mcachefs_dump_mdata_hashtree_min_depth = 0;
+
+static int mcachefs_dump_mdata_hashtree_max_blackdepth = 0;
+static int mcachefs_dump_mdata_hashtree_min_blackdepth = 0;
 
 void
 mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops,
@@ -2392,7 +2480,8 @@ mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops,
 
 void
 mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
-                            struct mcachefs_metadata_t *mdata, int depth,
+                            struct mcachefs_metadata_t *mdata, 
+                            int depth, int blackdepth,
                             hash_t min, hash_t max)
 {
     mcachefs_dump_mdata_hashtree_nb++;
@@ -2401,10 +2490,25 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
     {
         mcachefs_dump_mdata_hashtree_max_depth = depth;
     }
-
+    if ( mcachefs_dump_mdata_hashtree_max_blackdepth < blackdepth )
+    {
+        mcachefs_dump_mdata_hashtree_max_blackdepth = blackdepth;
+    }
+    if ( !mdata->left && !mdata->right )
+    {
+        if ( mcachefs_dump_mdata_hashtree_min_depth > depth )
+        {
+            mcachefs_dump_mdata_hashtree_min_depth = depth;
+        }
+        if ( mcachefs_dump_mdata_hashtree_min_blackdepth > blackdepth )
+        {
+            mcachefs_dump_mdata_hashtree_min_blackdepth = blackdepth;
+        }        
+    }
     __VOPS_WRITE(mvops,
-                 "%s[%llu], hash=%llx : '%s' (region [%llx:%llx]), ulr=%llu/%llu/%llu (%s), coll=n:%llu/p:%llu\n",
-                 dspace, mdata->id, _llu(mdata->hash), mdata->d_name, _llu(min), _llu(max),
+                 "%s[%llu], hash=%llx : '%s' (D=%d, blackd=%d, R [%llx:%llx]), ulr=%llu/%llu/%llu (%s), coll=n:%llu/p:%llu\n",
+                 dspace, mdata->id, _llu(mdata->hash), mdata->d_name, 
+                 depth, blackdepth, _llu(min), _llu(max),
                  mdata->up, mdata->left, mdata->right, _COLOR(mdata),
                  mdata->collision_next, mdata->collision_previous);
 
@@ -2418,7 +2522,10 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
         __VOPS_WRITE(mvops, "==> corrupted on max !\n");
         mcachefs_dump_mdata_hashtree_errs++;
     }
-
+    if ( mdata->color == BLACK )
+    {
+        blackdepth++;
+    }
     int chcount = 0;
     if (mdata->left)
     {
@@ -2438,7 +2545,7 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
             __VOPS_WRITE(mvops, "==> is RED, left should be BLACK !!!\n");
             mcachefs_dump_mdata_hashtree_errs++;
         }
-        mcachefs_metadata_dump_hash(mvops, left, depth + 1, min, mdata->hash - 1);
+        mcachefs_metadata_dump_hash(mvops, left, depth + 1, blackdepth, min, mdata->hash - 1);
         chcount++;
     }
     if (mdata->right)
@@ -2459,7 +2566,7 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
             __VOPS_WRITE(mvops, "==> is RED, right should be BLACK !!!\n");
             mcachefs_dump_mdata_hashtree_errs++;
         }
-        mcachefs_metadata_dump_hash(mvops, right, depth + 1, mdata->hash, max);
+        mcachefs_metadata_dump_hash(mvops, right, depth + 1, blackdepth, mdata->hash, max);
         chcount++;
     }
     mcachefs_dump_mdata_hashtree_chcount[chcount]++;
@@ -2467,7 +2574,7 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
     {
         mcachefs_metadata_dump_hash(mvops,
                                     mcachefs_metadata_do_get
-                                    (mdata->collision_next), depth,
+                                    (mdata->collision_next), depth, blackdepth,
                                     mdata->hash - 1, mdata->hash + 1);
         mcachefs_dump_mdata_hashtree_collision++;
     }
@@ -2481,7 +2588,11 @@ mcachefs_metadata_dump_locked(struct mcachefs_file_t *mvops)
     mcachefs_dump_mdata_tree_nb = 0;
     mcachefs_dump_mdata_hashtree_errs = 0;
     mcachefs_dump_mdata_hashtree_nb = 0;
+    mcachefs_dump_mdata_hashtree_min_depth = 1 << 30;
     mcachefs_dump_mdata_hashtree_max_depth = 0;
+    mcachefs_dump_mdata_hashtree_min_blackdepth = 1 << 30;
+    mcachefs_dump_mdata_hashtree_max_blackdepth = 0;
+    
     mcachefs_dump_mdata_hashtree_chcount[0] = 0;
     mcachefs_dump_mdata_hashtree_chcount[1] = 0;
     mcachefs_dump_mdata_hashtree_chcount[2] = 0;
@@ -2493,27 +2604,39 @@ mcachefs_metadata_dump_locked(struct mcachefs_file_t *mvops)
 
     __VOPS_WRITE(mvops, "--------------- Metadata hash tree hash_root=%llu, root=%s -----------------\n",
                  mcachefs_metadata_head->hash_root, mcachefs_metadata_get_root()->d_name);
-    mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_get_hash_root(), 0, 0,
-                                ~((hash_t) 0));
-    __VOPS_WRITE(mvops, "---- Final count=%lu, max depth=%d, nb children(0=%lu, 1=%lu, 2=%lu), collisions=%lu, errors=%d\n", 
-        mcachefs_dump_mdata_hashtree_nb, mcachefs_dump_mdata_hashtree_max_depth,
+    mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_get_hash_root(), 
+        0, 0, 0, ~((hash_t) 0));
+    __VOPS_WRITE(mvops, "---- Final count=%lu, depth min=%d,max=%d, blackdepth min=%d,max=%d, nb children(0=%lu, 1=%lu, 2=%lu), collisions=%lu\n", 
+        mcachefs_dump_mdata_hashtree_nb, mcachefs_dump_mdata_hashtree_min_depth, mcachefs_dump_mdata_hashtree_max_depth,
+        mcachefs_dump_mdata_hashtree_min_blackdepth, mcachefs_dump_mdata_hashtree_max_blackdepth,
         mcachefs_dump_mdata_hashtree_chcount[0], mcachefs_dump_mdata_hashtree_chcount[1], mcachefs_dump_mdata_hashtree_chcount[2],
-        mcachefs_dump_mdata_hashtree_collision, mcachefs_dump_mdata_hashtree_errs);
+        mcachefs_dump_mdata_hashtree_collision);
     if (mcachefs_dump_mdata_tree_nb != mcachefs_dump_mdata_hashtree_nb)
     {
+        // mcachefs_dump_mdata_hashtree_errs++;
         Err("Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_tree_nb=%lu\n", mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
-        __VOPS_WRITE(mvops,
-                     "Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_hashtree_nb=%lu\n",
+        __VOPS_WRITE(mvops, "Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_hashtree_nb=%lu\n",
                      mcachefs_dump_mdata_tree_nb,
                      mcachefs_dump_mdata_hashtree_nb);
+    }
+    if ( mcachefs_dump_mdata_hashtree_min_blackdepth < mcachefs_dump_mdata_hashtree_max_blackdepth - 2 )
+    {
+        // mcachefs_dump_mdata_hashtree_errs++;
+        __VOPS_WRITE(mvops, "Invalid blackdepth distance ! min=%d, max=%d\n",
+            mcachefs_dump_mdata_hashtree_min_blackdepth, mcachefs_dump_mdata_hashtree_max_blackdepth);
     }
 
     if ( mcachefs_dump_mdata_hashtree_errs )
     {
+        __VOPS_WRITE(mvops, "---- FOUND %d ERRORS !\n", mcachefs_dump_mdata_hashtree_errs);
         if ( mvops == NULL )
         {
             Bug("metadata hash tree has errors !\n");
         }
+    }
+    else
+    {
+        __VOPS_WRITE(mvops, "---- No error found ----\n");
     }
 }
 
