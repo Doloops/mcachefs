@@ -267,8 +267,7 @@ mcachefs_unlink(const char *path)
         free(backingpath);
     }
 
-    mcachefs_journal_append(mcachefs_journal_op_unlink, path, NULL, 0, 0, 0,
-                            0, 0, NULL);
+    mcachefs_journal_append(mcachefs_journal_op_unlink, path, NULL, 0, 0, 0, 0, 0, NULL);
     return 0;
 }
 
@@ -345,36 +344,69 @@ mcachefs_rename(const char *path, const char *to)
 static int
 mcachefs_link(const char *from, const char *to)
 {
-    Err("mcachefs_link(from = %s, to = %s) : NOT IMPLEMENTED !\n", from, to);
-    return -ENOSYS;
-#if 0
     int res;
-    char *realfrom, *realto;
+    char *backingfrom, *backingto;
 
-    mcachefs_metadata_invalidate(to);
+    struct mcachefs_metadata_t* meta = mcachefs_metadata_find(from);
+    if ( meta == NULL )
+    {
+        return -ENOENT;
+    }
+    struct stat fromst = meta->st;
+    mcachefs_metadata_id fromid = meta->id;
+    mcachefs_metadata_release(meta);
 
-    realfrom = mcachefs_makerealpath(from);
-    if (realfrom == NULL)
+    backingfrom = mcachefs_makepath_cache(from);
+    if (backingfrom == NULL)
     {
         return -ENOMEM;
     }
 
-    realto = mcachefs_makerealpath(to);
-    if (realto == NULL)
+    backingto = mcachefs_makepath_cache(to);
+    if (backingto == NULL)
     {
-        free(realfrom);
+        free(backingfrom);
         return -ENOMEM;
     }
 
-    res = link(realfrom, realto);
+    res = link(backingfrom, backingto);
 
-    free(realfrom);
-    free(realto);
+    free(backingfrom);
+    free(backingto);
     if (res == -1)
         return -errno;
 
+    res = mcachefs_metadata_make_entry(to, fromst.st_mode, fromst.st_dev);
+    if ( res )
+    {
+        return res;
+    }
+    meta = mcachefs_metadata_find(to);
+    mcachefs_metadata_id toid = 0;
+    if ( !meta )
+    {
+        Bug("Could not get meta for to=%s\n", to);
+    }
+    toid = meta->id;
+    meta->st = fromst;
+    meta->hardlink = fromid;
+    meta->st.st_nlink ++;
+    mcachefs_metadata_release(meta);
+
+    meta = mcachefs_metadata_find(from);
+    if ( !meta )
+    {
+        Bug("Could not get meta for from=%s\n", from);
+    }
+    meta->st.st_nlink ++;
+    if ( meta->hardlink )
+    {
+        Bug("Not implemented ! already has a link set !\n");
+    }
+    meta->hardlink = toid;
+    mcachefs_metadata_release(meta);
+    mcachefs_journal_append(mcachefs_journal_op_link, from, to, 0, 0, 0, 0, 0, NULL);
     return 0;
-#endif
 }
 
 static int
@@ -389,7 +421,7 @@ mcachefs_chmod(const char *path, mode_t mode)
         return -ENOENT;
 
     mdata->st.st_mode = ((mdata->st.st_mode & ~umask) | (mode & umask));
-
+    mcachefs_metadata_notify_update(mdata);
     mcachefs_metadata_release(mdata);
 
     mcachefs_journal_append(mcachefs_journal_op_chmod, path, NULL, mode, 0,
@@ -422,7 +454,7 @@ mcachefs_chown(const char *path, uid_t uid, gid_t gid)
       gid = mdata->st.st_gid;
     else
       mdata->st.st_gid = gid;
-
+    mcachefs_metadata_notify_update(mdata);
     mcachefs_metadata_release(mdata);
 
     mcachefs_journal_append(mcachefs_journal_op_chown, path, NULL, 0, 0, uid,

@@ -506,7 +506,7 @@ mcachefs_file_update_metadata(struct mcachefs_file_t *mfile, off_t size,
     mdata->st.st_atime = now;
     if (modified)
         mdata->st.st_mtime = now;
-
+    mcachefs_metadata_notify_update(mdata);
     mcachefs_metadata_release(mdata);
 }
 

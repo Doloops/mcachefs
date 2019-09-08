@@ -59,6 +59,6 @@ off_t mcachefs_vops_getsize(const char *path);
     __mfile->contents = (char*) realloc ( __mfile->contents, __mfile->contents_alloced ); \
     if ( __mfile->contents == NULL ) \
       { Bug ( "." ); } \
-  } else if (1) { fprintf(stderr, __VA_ARGS__); } } while(0)
+  } else if (1) { fprintf(stderr, __VA_ARGS__); break; } } while(1)
 
 #endif /* MCACHEFSVOPS_H_ */

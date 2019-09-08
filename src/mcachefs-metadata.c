@@ -37,7 +37,7 @@
 
 #define MCACHEFS_METADATA_BLOCK_SIZE (MCACHEFS_METADATA_ENTRY_SIZE * MCACHEFS_METADATA_BLOCK_ENTRY_COUNT)
 
-static const char *MCACHEFS_METADATA_MAGIC = "mcachefs.metafile.3.rbtree." __MCACHEFS_HASH_ALGORITHM;
+static const char *MCACHEFS_METADATA_MAGIC = "mcachefs.metafile.rbtree.4." __MCACHEFS_HASH_ALGORITHM;
 
 DIR *fdopendir(int __fd);
 
@@ -1099,13 +1099,12 @@ mcachefs_metadata_unlink_entry(struct mcachefs_metadata_t *mdata)
 
     if (father->child == mdata->id)
     {
-        father->child =
-            mdata->next ? mdata->next : mcachefs_metadata_id_EMPTY;
+        father->child = mdata->next ? mdata->next : mcachefs_metadata_id_EMPTY;
         return;
     }
 
-    for (next = mcachefs_metadata_do_get(father->child); next->next; next =
-         mcachefs_metadata_do_get(next->next))
+    for (next = mcachefs_metadata_do_get(father->child); next->next; 
+         next = mcachefs_metadata_do_get(next->next))
     {
         if (next->next == mdata->id)
         {
@@ -1369,6 +1368,10 @@ mcachefs_metadata_find_locked(const char *path)
     hash_t hash = doHash(path);
 
     Log("Finding path '%s'\n", path);
+    if ( strcmp(path, "/") == 0 )
+    {
+        return mcachefs_metadata_get(mcachefs_metadata_id_root);
+    }
 
     metadata = mcachefs_metadata_find_hash(path, hash, path_size);
     if (metadata)
@@ -1553,8 +1556,7 @@ mcachefs_metadata_getattr(const char *path, struct stat *stbuf)
         return -ENOENT;
     }
 
-    Log("Found '%llu' : '%s', (hash=%llx)\n", mdata->id, mdata->d_name,
-        mdata->hash);
+    Log("Found '%llu' : '%s', (hash=%llx)\n", mdata->id, mdata->d_name, mdata->hash);
     memcpy(stbuf, &(mdata->st), sizeof(struct stat));
 
     Log("dev=%ld, ino=%ld, mode=%lo, link=%lx, uid=%ld, gid=%ld, rdev=%ld, size=%lu, blksz=%ld, blkcnt=%ld, at=%ld, mt=%ld, ct=%ld\n", (long) mdata->st.st_dev, (long) mdata->st.st_ino, (long) mdata->st.st_mode, (long) mdata->st.st_nlink, (long) mdata->st.st_uid, (long) mdata->st.st_gid, (long) mdata->st.st_rdev, (long) mdata->st.st_size, (long) mdata->st.st_blksize, (long) mdata->st.st_blocks, mdata->st.st_atime, mdata->st.st_mtime, mdata->st.st_ctime);
@@ -1649,6 +1651,43 @@ mcachefs_metadata_make_entry(const char *path, mode_t mode, dev_t rdev)
     return 0;
 }
 
+void
+mcachefs_metadata_unlink_list(struct mcachefs_metadata_t *mdata)
+{
+    Log("mcachefs_metadata_unlink_list(%llu)\n", mdata->id);
+    mcachefs_metadata_check_locked();
+    if ( !mdata->hardlink )
+    {
+        Bug("At %llu : nlink=%lu but hardlink=%llu !\n", mdata->id, (unsigned long) mdata->st.st_nlink, mdata->hardlink);
+    }
+    struct mcachefs_metadata_t* next;
+    int count = 0;
+    int MAX_COUNT = 16;
+    while ( 1 )
+    {
+        count++;
+        if ( count >= MAX_COUNT )
+        {
+            Bug("Too mutch iterations while resolving links !\n");
+        }
+        next = mcachefs_metadata_get(mdata->hardlink);
+        Log("mcachefs_metadata_unlink_list(%llu), at %llu\n", mdata->id, next->id);
+        next->st.st_nlink --;
+        if ( next->hardlink == mdata->id )
+        {
+            if ( mdata->hardlink == next->id )
+            {
+                next->hardlink = 0;
+            }
+            else
+            {
+                next->hardlink = mdata->hardlink;
+            }
+            break;
+        }
+    }
+}
+
 int
 mcachefs_metadata_rmdir_unlink(const char *path, int isDir)
 {
@@ -1687,10 +1726,14 @@ mcachefs_metadata_rmdir_unlink(const char *path, int isDir)
     {
         if (!S_ISREG(mdata->st.st_mode) && !S_ISLNK(mdata->st.st_mode))
         {
-            Err("Not supported : unlink(%s), mode=%lo\n", path,
-                (long) mdata->st.st_mode);
+            Err("Not supported : unlink(%s), mode=%lo\n", path, (long) mdata->st.st_mode);
             mcachefs_metadata_release(mdata);
             return -ENOSYS;
+        }
+        if ( mdata->st.st_nlink > 1 )
+        {
+            Log("Will unlink multiple links from %llu\n", mdata->id);
+            mcachefs_metadata_unlink_list(mdata);
         }
     }
 
@@ -1700,6 +1743,32 @@ mcachefs_metadata_rmdir_unlink(const char *path, int isDir)
 
     mcachefs_metadata_release(mdata);
     return 0;
+}
+
+void 
+mcachefs_metadata_notify_update(struct mcachefs_metadata_t *mdata)
+{
+    if ( mdata->st.st_nlink <= 1 )
+    {
+        return;
+    }
+    Log("Updating mdata=%llu, st_nlink=%lu, hardlink=%llu\n", 
+        mdata->id, (unsigned long) mdata->st.st_nlink, mdata->hardlink);
+    if ( !mdata->hardlink )
+    {
+        Bug("Inconsistent hardlink ! mdata=%llu, st_nlink=%lu, hardlink=%llu\n", 
+        mdata->id, (unsigned long) mdata->st.st_nlink, mdata->hardlink);
+    }
+    struct mcachefs_metadata_t *next = mcachefs_metadata_get(mdata->hardlink);
+    while ( 1 )
+    {
+        next->st = mdata->st;
+        if ( next->hardlink == mdata->id )
+        {
+            break;
+        }
+        next = mcachefs_metadata_get(next->hardlink);
+    }
 }
 
 char *
@@ -2277,10 +2346,10 @@ mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops,
     __SET_DSPACE(depth);
 
     __VOPS_WRITE(mvops,
-                 "%s[%llu] h=%llx : '%s' (c=%llu,n=%llu,f=%llu, ulr=%llu:%llu:%llu), fh=%lx\n",
+                 "%s[%llu] h=%llx : '%s' (c=%llu,n=%llu,f=%llu, ulr=%llu:%llu:%llu), links=%lu, hardlink=%llu, fh=%lx\n",
                  dspace, mdata->id, _llu(mdata->hash), mdata->d_name, mdata->child,
                  mdata->next, mdata->father, mdata->up, mdata->left,
-                 mdata->right, (unsigned long) mdata->fh);
+                 mdata->right, (unsigned long) mdata->st.st_nlink, mdata->hardlink, (unsigned long) mdata->fh);
 
     if (mdata->child && mdata->child != mcachefs_metadata_id_EMPTY)
         mcachefs_metadata_dump_meta(mvops,
@@ -2389,13 +2458,12 @@ mcachefs_metadata_dump(struct mcachefs_file_t *mvops)
     mcachefs_dump_mdata_hashtree_chcount[1] = 0;
     mcachefs_dump_mdata_hashtree_chcount[2] = 0;
 
-    __VOPS_WRITE(mvops,
-                 "--------------- Metadata tree root=%s -----------------\n",
+    __VOPS_WRITE(mvops, "---------- Dumping Metadata ----------\n");
+    __VOPS_WRITE(mvops, "--------------- Metadata tree root=%s -----------------\n",
                  mcachefs_metadata_get_root()->d_name);
     mcachefs_metadata_dump_meta(mvops, mcachefs_metadata_get_root(), 0);
 
-    __VOPS_WRITE(mvops,
-                 "--------------- Metadata hash tree hash_root=%llu, root=%s -----------------\n",
+    __VOPS_WRITE(mvops, "--------------- Metadata hash tree hash_root=%llu, root=%s -----------------\n",
                  mcachefs_metadata_head->hash_root, mcachefs_metadata_get_root()->d_name);
     mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_get_hash_root(), 0, 0,
                                 ~((hash_t) 0));

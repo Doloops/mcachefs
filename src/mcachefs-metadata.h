@@ -36,6 +36,8 @@ struct mcachefs_metadata_t
 
     mcachefs_fh_t fh;
     struct stat st;
+    
+    mcachefs_metadata_id hardlink;
 };
 
 /**
@@ -48,13 +50,13 @@ void mcachefs_metadata_close();
 
 struct mcachefs_metadata_t *mcachefs_metadata_get(mcachefs_metadata_id id);
 
+void mcachefs_metadata_notify_update(struct mcachefs_metadata_t *mdata); // mdata has been updated, propagate wrt hardlink
+
 void mcachefs_metadata_release(struct mcachefs_metadata_t *mdata);      // Releases mcachefs_metadata_lock
 
 void mcachefs_metadata_release_all(int forceUnmap);
 
-struct mcachefs_metadata_t *mcachefs_metadata_get_child(struct
-                                                        mcachefs_metadata_t
-                                                        *father);
+struct mcachefs_metadata_t *mcachefs_metadata_get_child(struct mcachefs_metadata_t* father);
 
 struct mcachefs_metadata_t *mcachefs_metadata_find_locked(const char *path);    // Assert that mcachefs_metadata_lock IS locked
 
