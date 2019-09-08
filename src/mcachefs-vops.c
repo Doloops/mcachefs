@@ -8,7 +8,7 @@ mcachefs_vops_cleanup_vops(struct mcachefs_file_t *mvops)
 {
     if (mvops->contents)
     {
-        Log("VOPS CLEANUP for %s\n", mvops->path);
+        Log("VOPS CLEANUP for %s, at %p\n", mvops->path, mvops->contents);
         free(mvops->contents);
         mvops->contents = NULL;
     }
