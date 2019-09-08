@@ -10,7 +10,8 @@
 #include "mcachefs-transfer.h"
 #include "mcachefs-vops.h"
 
-static const int WAIT_CACHE_INTERVAL = 5 * 1000 * 1000;
+// Waiting for the cache to be populated, in nanoseconds
+static const int WAIT_CACHE_INTERVAL = 100 * 1000 * 1000;
 
 int
 mcachefs_open_mfile(struct mcachefs_file_t *mfile,
@@ -97,7 +98,7 @@ mcachefs_read_wait_accessible(struct mcachefs_file_t *mfile, size_t size,
             break;
         }
         if (mfile->cache_status == MCACHEFS_FILE_BACKING_NONE
-			|| mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED
+            || mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED
             || mfile->cache_status == MCACHEFS_FILE_BACKING_ERROR)
         {
             use_real = 1;

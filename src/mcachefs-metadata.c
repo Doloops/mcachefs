@@ -297,7 +297,7 @@ mcachefs_metadata_open()
         Bug("Invalid size for MCACHEFS_METADATA_SIZE (%lu), metadata size is (%lu)\n", MCACHEFS_METADATA_ENTRY_SIZE, (unsigned long) sizeof(struct mcachefs_metadata_t));
     }
 
-    Info("Opening metadata file '%s' (%d entries per metadata block, hash size=%lu bytes)\n",
+    Info("Opening metadata file '%s' (%d entries per metadata block, hash size=%u bytes)\n",
          mcachefs_config_get_metafile(), MCACHEFS_METADATA_BLOCK_ENTRY_COUNT,
          sizeof(hash_t));
 
@@ -887,6 +887,31 @@ mcachefs_metadata_insert_hash(struct mcachefs_metadata_t *newmeta)
 }
 
 void
+mcachefs_metadata_reinsert_hash(struct mcachefs_metadata_t *mdata)
+{
+    /*
+     * We do not need to handle collisions here as we reinsert at the correct hash
+     */
+    struct mcachefs_metadata_t* left = mdata->left ? mcachefs_metadata_get(mdata->left) : NULL;
+    struct mcachefs_metadata_t* right = mdata->right ? mcachefs_metadata_get(mdata->right) : NULL;    
+    
+    mdata->left = 0;
+    mdata->right = 0;
+    mdata->up = 0;
+    
+    mcachefs_metadata_insert_hash(mdata);
+    
+    if ( left )
+    {
+        mcachefs_metadata_reinsert_hash(left);
+    }
+    if ( right )
+    {
+        mcachefs_metadata_reinsert_hash(right);
+    }
+}
+
+void
 mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
 {
     struct mcachefs_metadata_t *up, *child, *left, *right;
@@ -894,15 +919,68 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
     
     Log("Removing the meta %llu !\n", mdata->id);
 
-    if (mdata->collision_previous)
+    if (mdata->collision_previous || mdata->collision_next)
     {
-        Log("Removing a collider, prev=%llu\n", mdata->collision_previous);
-        left = mcachefs_metadata_do_get(mdata->collision_previous);
-        left->collision_next = mdata->collision_next;
-        if (mdata->collision_next)
+        Log("Removing a standalone collider, prev=%llu, next=%llu\n", mdata->collision_previous, mdata->collision_next);
+        struct mcachefs_metadata_t *next = mdata->collision_next ? mcachefs_metadata_do_get(mdata->collision_next) : NULL;
+
+        if ( !mdata->collision_previous )
         {
-            right = mcachefs_metadata_do_get(mdata->collision_next);
-            right->collision_previous = mdata->collision_previous;
+            if ( ! next )
+            {
+                Bug("I have no previous, I should have a next !\n");
+            }
+            // I am the head of my collision list !
+            if ( mdata->up )
+            {
+                up = mcachefs_metadata_do_get(mdata->up);
+                iamleft = (up->left == mdata->id);
+                if ( iamleft )
+                {
+                    up->left = next->id;
+                }
+                else
+                {
+                    up->right = next->id;
+                }
+            }
+            else 
+            {
+                if ( mcachefs_metadata_head->hash_root != mdata->id )
+                {
+                    Bug("I (%llu) am the head of my collision list, I have no up, but am not root (is %llu)\n",
+                        mdata->id, mcachefs_metadata_head->hash_root);
+                }
+                Log("The next collider will become root !\n");
+                mcachefs_metadata_set_hash_root(next);
+            }
+            if ( mdata->left )
+            {
+                if ( next->left )
+                {
+                    Bug("Next collider can not have a left !\n");
+                }
+                next->left = mdata->left;
+                mcachefs_metadata_do_get(mdata->left)->up = next->id;
+            }
+            if ( mdata->right )
+            {
+                if ( next->right )
+                {
+                    Bug("Next collider can not have a right !\n");
+                }
+                next->right = mdata->right;
+                mcachefs_metadata_do_get(mdata->right)->up = next->id;
+            }
+        }
+        else
+        {
+            struct mcachefs_metadata_t *previous = mcachefs_metadata_do_get(mdata->collision_previous);
+            previous->collision_next = mdata->collision_next;
+        }
+        if ( next )
+        {
+            next->collision_previous = mdata->collision_previous;
         }
         return;
     }
@@ -1021,6 +1099,9 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
     {
         child->color = BLACK;
     }
+#if 1
+    mcachefs_metadata_reinsert_hash(otherchild);
+#else
     if ( otherchildisleft )
     {
         grandchild->right = otherchild->id;
@@ -1030,6 +1111,7 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
         grandchild->left = otherchild->id;
     }
     otherchild->up = grandchild->id;
+#endif
     mcachefs_metadata_cleanup_hash(mdata);
 }
 
@@ -1037,7 +1119,7 @@ void
 mcachefs_metadata_remove_hash(struct mcachefs_metadata_t *mdata)
 {
     mcachefs_metadata_do_remove_hash(mdata);
-#if 0   
+#if 0
     mcachefs_metadata_dump_locked(NULL);
 #endif
 }
@@ -1650,7 +1732,7 @@ mcachefs_metadata_remove_children(struct mcachefs_metadata_t *metadata)
         current = next;
     }
     metadata->child = 0;
-#if PARANOID
+#if 0
     mcachefs_metadata_dump_locked(NULL);
 #endif
 }

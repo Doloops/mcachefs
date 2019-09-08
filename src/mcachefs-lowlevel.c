@@ -116,7 +116,7 @@ mcachefs_readlink(const char *path, char *buf, size_t size)
         return 0;
     }
 
-    Err("Could not read from backing... %s\n", backingpath);
+    Log("Could not read from backing... %s\n", backingpath);
     realpath = mcachefs_makepath_source(path);
 
     if ((res = readlink(realpath, buf, size)) != -1)
