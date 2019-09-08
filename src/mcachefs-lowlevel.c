@@ -354,6 +354,7 @@ mcachefs_link(const char *from, const char *to)
     }
     struct stat fromst = meta->st;
     mcachefs_metadata_id fromid = meta->id;
+    mcachefs_metadata_id next_hardlink = meta->hardlink;
     mcachefs_metadata_release(meta);
 
     backingfrom = mcachefs_makepath_cache(from);
@@ -389,7 +390,7 @@ mcachefs_link(const char *from, const char *to)
     }
     toid = meta->id;
     meta->st = fromst;
-    meta->hardlink = fromid;
+    meta->hardlink = next_hardlink ? next_hardlink : fromid;
     meta->st.st_nlink ++;
     mcachefs_metadata_release(meta);
 
@@ -399,10 +400,6 @@ mcachefs_link(const char *from, const char *to)
         Bug("Could not get meta for from=%s\n", from);
     }
     meta->st.st_nlink ++;
-    if ( meta->hardlink )
-    {
-        Bug("Not implemented ! already has a link set !\n");
-    }
     meta->hardlink = toid;
     mcachefs_metadata_release(meta);
     mcachefs_journal_append(mcachefs_journal_op_link, from, to, 0, 0, 0, 0, 0, NULL);

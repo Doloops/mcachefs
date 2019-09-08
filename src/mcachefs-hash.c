@@ -5,13 +5,13 @@
 
 #ifdef __MCACHEFS_HASH_USE_CRC32
 
-#include "Crc32.h"
-
 typedef hash_t uint32_t;
 typedef unsigned char uint8_t;
 
 /// zlib's CRC32 polynomial
 const uint32_t Polynomial = 0xEDB88320;
+
+// compute CRC32 (bitwise algorithm), taken from https://create.stephan-brumme.com/crc32/
 
 uint32_t crc32_bitwise(const void* data, size_t length, uint32_t previousCrc32)
 {
@@ -39,7 +39,10 @@ uint32_t crc32_bitwise(const void* data, size_t length, uint32_t previousCrc32)
 #endif
 
 #ifdef __MCACHEFS_HASH_USE_CRC32_EXT
-/// compute CRC32 (bitwise algorithm), taken from https://create.stephan-brumme.com/crc32/
+
+#include "Crc32.h"
+
+
 hash_t
 continueHashPartial(hash_t crc, const char *str, int sz)
 {
@@ -82,7 +85,7 @@ continueHashPartial(hash_t crc, const char *str, int sz)
 
 
 
-#if 0
+#ifdef __MCACHEFS_HASH_USE_32_6_16
 hash_t
 continueHashPartial(hash_t h, const char *str, int sz)
 {

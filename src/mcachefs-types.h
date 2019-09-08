@@ -11,7 +11,8 @@
 #include <sys/types.h>
 
 // #define __MCACHEFS_HASH_USE_CRC32
-#define __MCACHEFS_HASH_USE_CRC64
+//#define __MCACHEFS_HASH_USE_CRC64
+#define __MCACHEFS_HASH_USE_32_6_16
 
 /**
  * Fuse File Handlers, provided by mcachefs at open() and used in read(), write() and release()
@@ -34,6 +35,11 @@ typedef unsigned long int hash_t;
 #ifdef __MCACHEFS_HASH_USE_CRC64
 typedef unsigned long long int hash_t;
 #define __MCACHEFS_HASH_ALGORITHM "crc64"
+#endif
+
+#ifdef __MCACHEFS_HASH_USE_32_6_16
+typedef unsigned int hash_t;
+#define __MCACHEFS_HASH_ALGORITHM "32.6.16"
 #endif
 
 /**
