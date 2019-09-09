@@ -993,8 +993,23 @@ mcachefs_metadata_find_replacer(struct mcachefs_metadata_t *mdata)
 }
 
 void
+mcachefs_metadata_check_no_self_reference(struct mcachefs_metadata_t *mdata)
+{
+#if 1 // PARANOID
+    if ( mdata->left == mdata->id || mdata->right == mdata->id || mdata->up == mdata->id )
+    {
+        Bug ("Corrupted entry ! %llu %s left=%llu, right=%llu, up=%llu\n", 
+            mdata->id, _COLOR(mdata), mdata->left, mdata->right, mdata->up);
+    }
+#endif
+}
+
+void
 mcachefs_metadata_fix_double_black(struct mcachefs_metadata_t *mdata)
 {
+    Log("Fix Double %llu %s left=%llu, right=%llu, up=%llu\n", 
+        mdata->id, _COLOR(mdata), mdata->left, mdata->right, mdata->up);
+    mcachefs_metadata_check_no_self_reference(mdata);
     if ( !mdata->up )
     {
         Log("Reached root !\n");
@@ -1078,6 +1093,108 @@ mcachefs_metadata_fix_double_black(struct mcachefs_metadata_t *mdata)
     }
 }
 
+#if 1
+void
+mcachefs_metadata_hash_swap_restore(struct mcachefs_metadata_t *first, int isleft)
+{
+    if ( first->up )
+    {
+        if ( isleft )
+        {
+            mcachefs_metadata_get(first->up)->left  = first->id;
+        }
+        else
+        {
+            mcachefs_metadata_get(first->up)->right  = first->id;
+        }
+    }
+    if ( first->left )
+    {
+        mcachefs_metadata_get(first->left)->up  = first->id;
+    }
+    if ( first->right )
+    {
+        mcachefs_metadata_get(first->right)->up  = first->id;
+    }
+}
+
+void
+mcachefs_metadata_hash_swap(struct mcachefs_metadata_t *first, struct mcachefs_metadata_t *second)
+{
+    mcachefs_metadata_check_no_self_reference(first);
+    mcachefs_metadata_check_no_self_reference(second);
+    
+    if ( second->up == first->id )
+    {
+        Log("Son/father relationship switching swaps\n");
+        mcachefs_metadata_hash_swap(second, first);
+        return;
+    }
+
+    int first_isleft = first->up ? mcachefs_metadata_get(first->up)->left == first->id : 0;
+    int second_isleft = second->up ? mcachefs_metadata_get(second->up)->left == second->id : 0;
+    mcachefs_metadata_id temp_up = first->up, temp_left = first->left, temp_right = first->right;
+    int temp_color = first->color;
+    first->color = second->color;
+    second->color = temp_color;
+    
+    if ( first->up == second->id )
+    {
+        Log("Father/son relationship ! Handle it directly\n");
+        
+        first->up = second->up;
+        second->up = first->id;
+
+        mcachefs_metadata_id otherchild = second->left == first->id ? second->right : second->left;
+        
+        if ( first_isleft )
+        {
+            first->left = second->id;
+            first->right = otherchild;
+        }
+        else
+        {
+            first->left = otherchild;
+            first->right = second->id;
+        }
+        
+        second->left = temp_left;
+        second->right = temp_right;
+       
+        mcachefs_metadata_hash_swap_restore(first, second_isleft);
+        mcachefs_metadata_hash_swap_restore(second, first_isleft);
+        mcachefs_metadata_check_no_self_reference(first);
+        mcachefs_metadata_check_no_self_reference(second);
+        
+        return;
+    }
+    if ( first->left == second->id || first->right == second->id )
+    {
+        Bug("Second is child of first !\n");
+    }
+    else if ( second->left == first->id || second->right == first->id )
+    {
+        Bug("First is child of second !\n");   
+    }
+
+    Log("Swapping %llu and %llu\n", first->id, second->id);
+  
+    first->up = second->up;
+    first->left = second->left;
+    first->right = second->right;
+    
+    second->up = temp_up;
+    second->left = temp_left;
+    second->right = temp_right;
+    
+    mcachefs_metadata_hash_swap_restore(first, second_isleft);
+    mcachefs_metadata_hash_swap_restore(second, first_isleft);
+
+    mcachefs_metadata_check_no_self_reference(first);
+    mcachefs_metadata_check_no_self_reference(second);
+}
+#else
+
 #define _COLOR_ID(__id) \
   ((__id) ? (_COLOR(mcachefs_metadata_get(__id))) : "")
 
@@ -1090,6 +1207,13 @@ mcachefs_metadata_hash_swap(struct mcachefs_metadata_t *replacer, struct mcachef
     {
         Bug("Not supported ! swap root !\n");
     }
+    struct mcachefs_metadata_t* replacer_up = mcachefs_metadata_get(replacer->up);
+    if ( replacer_up->left == replacer->id )
+        replacer_up->left = 0;
+    else if ( replacer_up->right == replacer->id )
+        replacer_up->right = 0;
+    else
+        Bug("Invalid replacer up !\n");
     if ( replacer->left && (!mdata->left || mdata->left == replacer->id) )
     {
         Log("Left merge : mdata=%llu replacer=%llu left=%llu\n",
@@ -1169,23 +1293,22 @@ mcachefs_metadata_hash_swap(struct mcachefs_metadata_t *replacer, struct mcachef
     Log("Now replacer %llu %s, left=%llu, right=%llu, up=%llu\n", 
         replacer->id, _COLOR(replacer), replacer->left, replacer->right, replacer->up);
 }
+#endif
 
 void
 mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
 {
-    struct mcachefs_metadata_t *up; //  *child, *left, *right
-    int iamleft;
-    
     Log("Removing meta %llu, lr %llu,%llu, up %llu !\n", 
         mdata->id, mdata->left, mdata->right, mdata->up);
+    mcachefs_metadata_check_no_self_reference(mdata);
 
     if (mdata->collision_previous || mdata->collision_next)
     {
         mcachefs_metadata_do_remove_hash_collision(mdata);
         return;
     }
-    up = mdata->up ? mcachefs_metadata_do_get(mdata->up) : NULL;
-    iamleft = up ? (up->left == mdata->id) : 0;
+    struct mcachefs_metadata_t *up = mdata->up ? mcachefs_metadata_do_get(mdata->up) : NULL;
+    int iamleft = up ? (up->left == mdata->id) : 0;
 
     struct mcachefs_metadata_t* replacer = mcachefs_metadata_find_replacer(mdata);
     int uvBlack = ((replacer == NULL || replacer->color == BLACK) && (mdata->color == BLACK));
@@ -1225,8 +1348,8 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
     }
     if ( !mdata->left || !mdata->right )
     {
-        Log("Replacer %llu, from mdata=%llu left=%llu, right=%llu\n", 
-            replacer->id, mdata->id, mdata->left, mdata->right);
+        Log("Replacer %llu, from mdata=%llu left=%llu, right=%llu, up=%llu\n", 
+            replacer->id, mdata->id, mdata->left, mdata->right, mdata->up);
         if ( ! up )
         {
             if ( mdata->id != mcachefs_metadata_head->hash_root )
@@ -1259,7 +1382,8 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
     }
     Log("Swap %llu with replacer %llu, left=%llu, right=%llu\n", 
         mdata->id, replacer->id, mdata->left, mdata->right);
-    mcachefs_metadata_hash_swap(replacer, mdata, iamleft);
+    mcachefs_metadata_hash_swap(replacer, mdata);
+    mcachefs_metadata_do_remove_hash(mdata);
 }
 
 #if 0
@@ -2894,8 +3018,9 @@ mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops,
 }
 
 void
-mcachefs_metadata_update_blackdepth(int blackdepth)
+mcachefs_metadata_update_blackdepth(struct mcachefs_file_t *mvops, struct mcachefs_metadata_t *mdata, int blackdepth)
 {
+    (mvops);
     if ( mcachefs_dump_mdata_hashtree_max_blackdepth < blackdepth )
     {
         mcachefs_dump_mdata_hashtree_max_blackdepth = blackdepth;
@@ -2903,7 +3028,8 @@ mcachefs_metadata_update_blackdepth(int blackdepth)
     if ( mcachefs_dump_mdata_hashtree_min_blackdepth > blackdepth )
     {
         mcachefs_dump_mdata_hashtree_min_blackdepth = blackdepth;
-    }    
+    }
+    // __VOPS_WRITE(mvops, "* LEAF %llu (%s) depth=%d\n", mdata->id, _COLOR(mdata), blackdepth);
 }
 
 void
@@ -2912,6 +3038,13 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
                             int depth, int blackdepth,
                             hash_t min, hash_t max)
 {
+    if ( depth > 32 )
+    {
+        __VOPS_WRITE(mvops, "==> Depth too high !\n");
+        mcachefs_dump_mdata_hashtree_errs++;
+        return;
+    }
+    
     mcachefs_dump_mdata_hashtree_nb++;
     __SET_DSPACE(depth);
     if ( mcachefs_dump_mdata_hashtree_max_depth < depth )
@@ -2929,17 +3062,16 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
     {
         blackdepth++;
     }
-    if ( !mdata->left || !mdata->right )
-    {
-        mcachefs_metadata_update_blackdepth(blackdepth + 1);
-    }
     __VOPS_WRITE(mvops,
-                 "%s[%llu] (LR %llu,%llu), hash=%llx : '%s' (D=%d, blackd=%d, R [%llx:%llx]), up=%llu (%s), coll=n:%llu/p:%llu\n",
-                 dspace, mdata->id, mdata->left, mdata->right, 
+                 "%s[%llu] (LR %llu,%llu) %s, up=%llu, hash=%llx : '%s' (D=%d, blackd=%d, R [%llx:%llx]), coll=n:%llu/p:%llu\n",
+                 dspace, mdata->id, mdata->left, mdata->right, _COLOR(mdata), mdata->up,
                  _llu(mdata->hash), mdata->d_name, 
                  depth, blackdepth, _llu(min), _llu(max),
-                 mdata->up, _COLOR(mdata),
                  mdata->collision_next, mdata->collision_previous);
+    if ( !mdata->left || !mdata->right )
+    {
+        mcachefs_metadata_update_blackdepth(mvops, mdata, blackdepth + 1);
+    }
 
     if (mdata->hash < min)
     {
