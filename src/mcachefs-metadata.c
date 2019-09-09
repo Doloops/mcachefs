@@ -18,6 +18,8 @@
 
 #define MCACHEFS_METADATA_MAX_LEVELS 1024
 
+#define MCACHEFS_METADATA_MAX_LINK_COUNT 1024
+
 #define __MCACHEFS_METADATA_HAS_FILLENTRY
 // #define __MCACHEFS_METADATA_HAS_SYNC
 
@@ -524,10 +526,9 @@ int
 mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
                          int path_size)
 {
-    static const int MAX_LEVEL = 128;
     Log("Equals : mdata=%p:%s (father=%llu), path=%s, path_size=%d\n",
         mdata, mdata->d_name, mdata->father, path, path_size);
-    const char* namestack[MAX_LEVEL];
+    const char* namestack[MCACHEFS_METADATA_MAX_LEVELS];
     int levels = 0;
     
     struct mcachefs_metadata_t *current = mdata;
@@ -535,7 +536,7 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
     {
         namestack[levels] = current->d_name;
         levels++;
-        if ( levels == MAX_LEVEL )
+        if ( levels == MCACHEFS_METADATA_MAX_LEVELS )
         {
             Bug("Maximum level of hierarchy (%d) reached in path '%s'!\n", 
                 levels, path);
@@ -1490,7 +1491,13 @@ mcachefs_metadata_fetch_children(struct mcachefs_metadata_t *mroot)
         {
             if (current->father == rootid)
                 return;
+            if (current->father == mcachefs_metadata_id_root)
+                return;
             currentid = current->father;
+            if (!currentid)
+            {
+                Bug("Invalid ! rootid=%llu, current=%llu, no father !\n", rootid, current->id);
+            }
             current = mcachefs_metadata_do_get(currentid);
         }
         if (current->id == rootid)
@@ -1855,19 +1862,25 @@ mcachefs_metadata_unlink_list(struct mcachefs_metadata_t *mdata)
     {
         Bug("At %llu : nlink=%lu but hardlink=%llu !\n", mdata->id, (unsigned long) mdata->st.st_nlink, mdata->hardlink);
     }
-    struct mcachefs_metadata_t* next;
+    struct mcachefs_metadata_t* next = mcachefs_metadata_get(mdata->hardlink);
     int count = 0;
-    int MAX_COUNT = 16;
     while ( 1 )
     {
+        Log("mcachefs_metadata_unlink_list(%llu), at %llu, count=%d\n", mdata->id, next->id, count);
         count++;
-        if ( count >= MAX_COUNT )
+        if ( count >= MCACHEFS_METADATA_MAX_LINK_COUNT )
         {
-            Bug("Too mutch iterations while resolving links !\n");
+            mcachefs_metadata_dump_locked(NULL);
+            Bug("Too mutch iterations while resolving links ! at mdata=%llu, hardlink=%llu\n",
+                mdata->id, mdata->hardlink);
         }
-        next = mcachefs_metadata_get(mdata->hardlink);
-        Log("mcachefs_metadata_unlink_list(%llu), at %llu\n", mdata->id, next->id);
         next->st.st_nlink --;
+        
+        if ( next->hardlink == 0 )
+        {
+            mcachefs_metadata_dump_locked(NULL);
+            Bug("Spurious ! at mdata=%llu, next=%llu has no hardlink set !\n", mdata->id, next->id);
+        }
         if ( next->hardlink == mdata->id )
         {
             if ( mdata->hardlink == next->id )
@@ -1880,6 +1893,7 @@ mcachefs_metadata_unlink_list(struct mcachefs_metadata_t *mdata)
             }
             break;
         }
+        next = mcachefs_metadata_get(next->hardlink);
     }
 }
 
