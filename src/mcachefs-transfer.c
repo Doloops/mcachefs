@@ -51,8 +51,8 @@ mcachefs_transfer_backfile(struct mcachefs_file_t *mfile)
     mcachefs_file_lock_file(mfile);
 
     if (mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED
-		|| mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS
-		|| mfile->cache_status == MCACHEFS_FILE_BACKING_DONE )
+        || mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS
+        || mfile->cache_status == MCACHEFS_FILE_BACKING_DONE )
     {
         Log("Backing in progress for file '%s'\n", mfile->path);
         mcachefs_file_unlock_file(mfile);
@@ -424,8 +424,8 @@ mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile, int transfer_type)
 
     mcachefs_file_lock_file(mfile);
 
-	mfile->transfer.tobacking = (transfer_type == MCACHEFS_TRANSFER_TYPE_BACKUP);
-	mfile->transfer.total_size = size;
+    mfile->transfer.tobacking = (transfer_type == MCACHEFS_TRANSFER_TYPE_BACKUP);
+    mfile->transfer.total_size = size;
     mfile->transfer.transfered_size = 0;
     mfile->transfer.rate = 0;
     mfile->transfer.total_time = 0;
@@ -441,8 +441,8 @@ mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile, int transfer_type)
     }
     else
     {
-		Err("Invalid transfer for path='%s', cache_status=%d, transfer_type=%d\n", mfile->path, mfile->cache_status, transfer_type);
-	}
+        Err("Invalid transfer for path='%s', cache_status=%d, transfer_type=%d\n", mfile->path, mfile->cache_status, transfer_type);
+    }
 }
 
 void
@@ -451,10 +451,10 @@ mcachefs_transfer_do_backing(struct mcachefs_file_t *mfile)
     char *backingpath;
 
     if (mcachefs_fileincache(mfile->path))
-	{
-		Err("File '%s' already in cache !\n", mfile->path);
-		return;
-	}
+    {
+        Err("File '%s' already in cache !\n", mfile->path);
+        return;
+    }
     if (mcachefs_createfile_cache(mfile->path, 0644))
     {
         Err("Could not create backing path for '%s' !\n", mfile->path);
@@ -789,6 +789,11 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
     return -EIO;
 }
 
+/**
+ * Must be in line with MCACHEFS_TRANSFER_TYPE_*
+ */
+const char* mcachefs_transfer_type_names[] = { "backup", "writeback", "metadata", NULL };
+
 void
 mcachefs_transfer_dump(struct mcachefs_file_t *mvops)
 {
@@ -805,9 +810,10 @@ mcachefs_transfer_dump(struct mcachefs_file_t *mvops)
 
     for (cur = 0; cur < mcachefs_transfer_threads_nb; cur++)
     {
-        __VOPS_WRITE(mvops, "[Thread %lx, type=%d]\n",
+        __VOPS_WRITE(mvops, "[Thread %lx, type=%s]\n",
                      mcachefs_transfer_threads[cur].threadid,
-                     mcachefs_transfer_threads[cur].type);
+                     ( mcachefs_transfer_threads[cur].type < MCACHEFS_TRANSFER_TYPES ) ?
+                     mcachefs_transfer_type_names[mcachefs_transfer_threads[cur].type] : "Unknown" );
         mfile = mcachefs_transfer_threads[cur].currentfile;
         if (mfile == NULL)
             continue;
