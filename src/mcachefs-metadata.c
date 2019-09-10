@@ -2744,8 +2744,6 @@ mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops,
 void
 mcachefs_metadata_update_blackdepth(struct mcachefs_file_t *mvops, struct mcachefs_metadata_t *mdata, int blackdepth)
 {
-    (mvops);
-    (mdata);
     if ( mcachefs_dump_mdata_hashtree_max_blackdepth < blackdepth )
     {
         mcachefs_dump_mdata_hashtree_max_blackdepth = blackdepth;
@@ -2793,7 +2791,8 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
                  _llu(mdata->hash), mdata->d_name, 
                  depth, blackdepth, _llu(min), _llu(max),
                  mdata->collision_next, mdata->collision_previous);
-    if ( !mdata->left || !mdata->right )
+    // Count the black-depth of the tree, but ignore collisions
+    if ( (! mdata->collision_next && ! mdata->collision_previous )  && (!mdata->left || !mdata->right ) )
     {
         mcachefs_metadata_update_blackdepth(mvops, mdata, blackdepth + 1);
     }
