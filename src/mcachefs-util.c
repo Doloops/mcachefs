@@ -71,8 +71,7 @@ mcachefs_createpath(const char *prefix, const char *cpath, int lastIsDir)
     int prefixfd, tempfd, res;
     struct stat sb;
 
-    Log("createpath(prefix=%s, cpath=%s, lastIsDir=%d)\n", prefix, cpath,
-        lastIsDir);
+    Log("createpath(prefix=%s, cpath=%s, lastIsDir=%d)\n", prefix, cpath, lastIsDir);
 
     if (cpath[0] == '/')
     {
@@ -116,8 +115,7 @@ mcachefs_createpath(const char *prefix, const char *cpath, int lastIsDir)
 
     if (prefixfd == -1)
     {
-        Err("Could not get prefix '%s' : error %d:%s\n", prefix, errno,
-            strerror(errno));
+        Err("Could not get prefix '%s' : error %d:%s\n", prefix, errno, strerror(errno));
         free(path);
         return -errno;
     }
@@ -138,8 +136,7 @@ mcachefs_createpath(const char *prefix, const char *cpath, int lastIsDir)
         res = mcachefs_createpath(prefix, parentname, 1);
         if (res != 0)
         {
-            Err("Could not create parent (prefix=%s, parentname=%s)\n",
-                prefix, parentname);
+            Err("Could not create parent (prefix=%s, parentname=%s)\n", prefix, parentname);
             free(path);
             close(prefixfd);
             return res;
@@ -151,12 +148,10 @@ mcachefs_createpath(const char *prefix, const char *cpath, int lastIsDir)
             close(prefixfd);
             return -1;
         }
-        Log("Opened prefixfd=%d, parentname=%s, tempfd=%d\n", prefixfd,
-            parentname, tempfd);
+        Log("Opened prefixfd=%d, parentname=%s, tempfd=%d\n", prefixfd, parentname, tempfd);
         if (mkdirat(tempfd, cname, S_IRWXU) != 0)
         {
-            Err("Could not mkdirat(tempfd=%d, cname=%s) : err=%d:%s\n",
-                tempfd, cname, errno, strerror(errno));
+            Err("Could not mkdirat(tempfd=%d, cname=%s) : err=%d:%s\n", tempfd, cname, errno, strerror(errno));
             free(path);
             close(prefixfd);
             close(tempfd);
@@ -195,8 +190,7 @@ mcachefs_createfile_cache(const char *path, mode_t mode)
         Log("File already exist !\n");
         if (truncate(backing_path, 0))
         {
-            Err("Could not truncate existing backing path '%s' err=%d:%s\n",
-                backing_path, errno, strerror(errno));
+            Err("Could not truncate existing backing path '%s' err=%d:%s\n", backing_path, errno, strerror(errno));
             res = -errno;
         }
         free(backing_path);

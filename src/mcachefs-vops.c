@@ -16,15 +16,15 @@ mcachefs_vops_cleanup_vops(struct mcachefs_file_t *mvops)
     mvops->contents_alloced = 0;
 }
 
-typedef int (*proc_get_int) ();
+typedef int (*proc_get_int)();
 
-typedef void (*proc_set_int) (int);
+typedef void (*proc_set_int)(int);
 
-typedef const char *(*proc_get_string) ();
+typedef const char *(*proc_get_string)();
 
-typedef void (*proc_set_string) (const char *);
+typedef void (*proc_set_string)(const char *);
 
-typedef void (*proc_extern_build) (struct mcachefs_file_t * mvops);
+typedef void (*proc_extern_build)(struct mcachefs_file_t * mvops);
 
 struct mcachefs_vops_proc
 {
@@ -37,8 +37,7 @@ struct mcachefs_vops_proc
     proc_extern_build extern_build;
 };
 
-static const char *read_state_names[] =
-    { "normal", "full", "handsup", "nocache", "quitting", NULL };
+static const char *read_state_names[] = { "normal", "full", "handsup", "nocache", "quitting", NULL };
 
 static const char *write_state_names[] = { "cache", "flush", "force", NULL };
 
@@ -48,15 +47,11 @@ mcachefs_vops_call_none()
 
 }
 
-typedef void (*proc_extern_call) ();
+typedef void (*proc_extern_call)();
 
-static const char *vops_action_names[] =
-    { "none", "apply_journal", "flush_metadata", "cleanup_cache",
-    "fill_cache_meta", NULL
-};
+static const char *vops_action_names[] = { "none", "apply_journal", "flush_metadata", "cleanup_cache", "fill_cache_meta", NULL };
 
-static const proc_extern_call vops_action_calls[] =
-    { &mcachefs_vops_call_none, &mcachefs_journal_apply,
+static const proc_extern_call vops_action_calls[] = { &mcachefs_vops_call_none, &mcachefs_journal_apply,
     &mcachefs_metadata_flush, &mcachefs_cleanup_backing,
     &mcachefs_metadata_fill_meta, NULL
 };
@@ -105,8 +100,7 @@ mcachefs_vops_get_vops_list()
 {
     if (!names)
     {
-        int number_of_entries = sizeof(vops_procs)
-            / sizeof(struct mcachefs_vops_proc) + 1;
+        int number_of_entries = sizeof(vops_procs) / sizeof(struct mcachefs_vops_proc) + 1;
         Log("Defining %d entries\n", number_of_entries);
         names = (const char **) malloc(sizeof(char *) * number_of_entries);
 
@@ -139,8 +133,7 @@ mcachefs_vops_proc_find(struct mcachefs_file_t *mvops)
 }
 
 void
-vops_build_int_map(struct mcachefs_file_t *mvops,
-                   struct mcachefs_vops_proc *proc)
+vops_build_int_map(struct mcachefs_file_t *mvops, struct mcachefs_vops_proc *proc)
 {
     int value = proc->get_int();
 
@@ -173,8 +166,7 @@ vops_build_int(struct mcachefs_file_t *mvops, struct mcachefs_vops_proc *proc)
 }
 
 void
-vops_build_string(struct mcachefs_file_t *mvops,
-                  struct mcachefs_vops_proc *proc)
+vops_build_string(struct mcachefs_file_t *mvops, struct mcachefs_vops_proc *proc)
 {
     const char *value = proc->get_string();
     if (value != NULL)
@@ -251,8 +243,7 @@ vops_parse_int_raw_map(struct mcachefs_file_t *mvops, const char *values[])
 }
 
 void
-vops_parse_int_map(struct mcachefs_file_t *mvops,
-                   struct mcachefs_vops_proc *proc)
+vops_parse_int_map(struct mcachefs_file_t *mvops, struct mcachefs_vops_proc *proc)
 {
     int value = vops_parse_int_raw_map(mvops, proc->int_string_map);
 
@@ -291,8 +282,7 @@ vops_parse_int(struct mcachefs_file_t *mvops, struct mcachefs_vops_proc *proc)
 }
 
 void
-vops_parse_string(struct mcachefs_file_t *mvops,
-                  struct mcachefs_vops_proc *proc)
+vops_parse_string(struct mcachefs_file_t *mvops, struct mcachefs_vops_proc *proc)
 {
     vops_cleanup_first_line(mvops);
     proc->set_string(mvops->contents);

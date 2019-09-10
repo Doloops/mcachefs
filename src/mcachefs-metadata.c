@@ -69,8 +69,7 @@ mcachefs_metadata_id metadata_map_mmap_count = 0;
 size_t metadata_map_sz = 0;
 
 
-void
-mcachefs_metadata_dump_locked(struct mcachefs_file_t *mvops);
+void mcachefs_metadata_dump_locked(struct mcachefs_file_t *mvops);
 
 /**
  * **************************************** VERY LOW LEVEL *******************************************
@@ -93,8 +92,7 @@ mcachefs_metadata_do_get(mcachefs_metadata_id id)
     }
     if (id >= mcachefs_metadata_head->alloced_nb)
     {
-        Bug("Out of reach : id=%llu, alloced_nb=%llu\n", id,
-            mcachefs_metadata_head->alloced_nb);
+        Bug("Out of reach : id=%llu, alloced_nb=%llu\n", id, mcachefs_metadata_head->alloced_nb);
     }
 #endif
     mcachefs_metadata_id block = id >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS;
@@ -105,20 +103,17 @@ mcachefs_metadata_do_get(mcachefs_metadata_id id)
         mcachefs_metadata_mmap_block(block);
     }
     time_t now = mcachefs_get_jiffy_sec();
-    if ( metadata_map[block].last_used != now )
+    if (metadata_map[block].last_used != now)
     {
         metadata_map[block].last_used = now;
     }
-    struct mcachefs_metadata_t *meta =
-        (struct mcachefs_metadata_t *) ((unsigned long)
-        metadata_map[block].map + (block_idx * MCACHEFS_METADATA_ENTRY_SIZE));
+    struct mcachefs_metadata_t *meta = (struct mcachefs_metadata_t *) ((unsigned long) metadata_map[block].map + (block_idx * MCACHEFS_METADATA_ENTRY_SIZE));
 
     return meta;
 }
 
 void
-mcachefs_metadata_extend_free_entries(mcachefs_metadata_id first,
-                                      mcachefs_metadata_id last)
+mcachefs_metadata_extend_free_entries(mcachefs_metadata_id first, mcachefs_metadata_id last)
 {
     Log("Formatting entries (first=%llu, last=%llu)\n", first, last);
 
@@ -176,17 +171,14 @@ mcachefs_metadata_format()
     }
     mdata.st.st_ino = 0;
 
-    res = pwrite(mcachefs_metadata_fd, &mdata,
-                 sizeof(struct mcachefs_metadata_t),
-                 MCACHEFS_METADATA_ENTRY_SIZE);
+    res = pwrite(mcachefs_metadata_fd, &mdata, sizeof(struct mcachefs_metadata_t), MCACHEFS_METADATA_ENTRY_SIZE);
     if (res != sizeof(struct mcachefs_metadata_t))
     {
         Err("Could not format metafile !");
         exit(-1);
     }
 
-    mcachefs_metadata_extend_free_entries(2,
-                                          MCACHEFS_METADATA_BLOCK_ENTRY_COUNT);
+    mcachefs_metadata_extend_free_entries(2, MCACHEFS_METADATA_BLOCK_ENTRY_COUNT);
 }
 
 void
@@ -205,18 +197,14 @@ mcachefs_metadata_reset_fh()
 void
 mcachefs_resize_metadata_map()
 {
-    unsigned long long nbblocks = mcachefs_metadata_head->alloced_nb
-        >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS;
-    Log("Number of existing blocks : %llu (alloced_nb=%llu), current size=%lu\n", nbblocks, mcachefs_metadata_head->alloced_nb, (unsigned long) metadata_map_sz);
+    unsigned long long nbblocks = mcachefs_metadata_head->alloced_nb >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS;
+    Log("Number of existing blocks : %llu (alloced_nb=%llu), current size=%lu\n", nbblocks,
+        mcachefs_metadata_head->alloced_nb, (unsigned long) metadata_map_sz);
     size_t new_map_sz = sizeof(struct mcachefs_metadata_map_t) * nbblocks;
-    Log("Realloc from %lu to %lu in size\n", (unsigned long) metadata_map_sz,
-        (unsigned long) new_map_sz);
-    metadata_map =
-        (struct mcachefs_metadata_map_t *) realloc(metadata_map, new_map_sz);
-    void *metadata_map_fresh =
-        (void *) ((long) metadata_map + (long) metadata_map_sz);
-    Log("Realloced to metadata_map=%p, metadata_map_fresh=%p\n",
-        metadata_map, metadata_map_fresh);
+    Log("Realloc from %lu to %lu in size\n", (unsigned long) metadata_map_sz, (unsigned long) new_map_sz);
+    metadata_map = (struct mcachefs_metadata_map_t *) realloc(metadata_map, new_map_sz);
+    void *metadata_map_fresh = (void *) ((long) metadata_map + (long) metadata_map_sz);
+    Log("Realloced to metadata_map=%p, metadata_map_fresh=%p\n", metadata_map, metadata_map_fresh);
     memset(metadata_map_fresh, 0, new_map_sz - metadata_map_sz);
     metadata_map_sz = new_map_sz;
 }
@@ -225,20 +213,17 @@ void
 mcachefs_metadata_mmap_block(mcachefs_metadata_id block)
 {
     off_t block_offset = block * MCACHEFS_METADATA_BLOCK_SIZE;
-    Log("MMapping block=%llu, block_offset=%lu\n", block,
-        (unsigned long) block_offset);
-    struct mcachefs_metadata_t *rmap =
-        mmap(NULL, MCACHEFS_METADATA_BLOCK_SIZE,
-             PROT_READ | PROT_WRITE, MAP_SHARED, mcachefs_metadata_fd,
-             block_offset);
+    Log("MMapping block=%llu, block_offset=%lu\n", block, (unsigned long) block_offset);
+    struct mcachefs_metadata_t *rmap = mmap(NULL, MCACHEFS_METADATA_BLOCK_SIZE,
+                                            PROT_READ | PROT_WRITE, MAP_SHARED, mcachefs_metadata_fd,
+                                            block_offset);
     if (rmap == NULL || rmap == MAP_FAILED)
     {
         Err("Could not open metadata ! Err=%d:%s\n", errno, strerror(errno));
         exit(-1);
     }
     Log_MMap("MMapped block=%llu, size=%lu, offset=%lu, at %p (end at 0x%lx)\n",
-        block, MCACHEFS_METADATA_BLOCK_SIZE, (unsigned long) block_offset,
-        rmap, ((long) rmap + (long) MCACHEFS_METADATA_BLOCK_SIZE));
+             block, MCACHEFS_METADATA_BLOCK_SIZE, (unsigned long) block_offset, rmap, ((long) rmap + (long) MCACHEFS_METADATA_BLOCK_SIZE));
     metadata_map[block].map = rmap;
     metadata_map_mmap_count++;
     // Log("MMap block %llu, count=%llu, total=%llu\n", block, metadata_map_mmap_count, mcachefs_metadata_head->alloced_nb >> MCACHEFS_METADATA_BLOCK_ENTRY_BITS);
@@ -281,11 +266,10 @@ mcachefs_metadata_release_all(int forceUnmap)
         }
         metadata_map[block].map = NULL;
         metadata_map_mmap_count--;
-        Log_MMap("MUnMap block %llu, age=%lu, count=%llu, total=%llu\n", block,
-            age, metadata_map_mmap_count, nbblocks);
+        Log_MMap("MUnMap block %llu, age=%lu, count=%llu, total=%llu\n", block, age, metadata_map_mmap_count, nbblocks);
     }
-    Log("MUnMap : Count=%llu->%llu, total=%llu\n",
-        metadata_map_mmap_count_ori, metadata_map_mmap_count, nbblocks);
+    Log("MUnMap : Count=%llu->%llu, total=%llu\n", metadata_map_mmap_count_ori, metadata_map_mmap_count, nbblocks);
+    (void) metadata_map_mmap_count_ori;
 }
 
 void
@@ -294,12 +278,12 @@ mcachefs_metadata_open()
     mcachefs_metadata_check_locked();
     if (MCACHEFS_METADATA_ENTRY_SIZE < (sizeof(struct mcachefs_metadata_t)))
     {
-        Bug("Invalid size for MCACHEFS_METADATA_SIZE (%lu), metadata size is (%lu)\n", MCACHEFS_METADATA_ENTRY_SIZE, (unsigned long) sizeof(struct mcachefs_metadata_t));
+        Bug("Invalid size for MCACHEFS_METADATA_SIZE (%lu), metadata size is (%lu)\n", MCACHEFS_METADATA_ENTRY_SIZE,
+            (unsigned long) sizeof(struct mcachefs_metadata_t));
     }
 
     Info("Opening metadata file '%s' (%d entries per metadata block, hash size=%lu bytes)\n",
-         mcachefs_config_get_metafile(), MCACHEFS_METADATA_BLOCK_ENTRY_COUNT,
-         (unsigned long) sizeof(hash_t));
+         mcachefs_config_get_metafile(), MCACHEFS_METADATA_BLOCK_ENTRY_COUNT, (unsigned long) sizeof(hash_t));
 
     struct stat st;
 
@@ -311,11 +295,9 @@ mcachefs_metadata_open()
 
         if (mcachefs_metadata_fd == -1)
         {
-            Err("Could not open '%s' : err=%d:%s\n",
-                mcachefs_config_get_metafile(), errno, strerror(errno));
+            Err("Could not open '%s' : err=%d:%s\n", mcachefs_config_get_metafile(), errno, strerror(errno));
         }
-        Log("Opened metafile '%s' at fd=%d\n",
-            mcachefs_config_get_metafile(), mcachefs_metadata_fd);
+        Log("Opened metafile '%s' at fd=%d\n", mcachefs_config_get_metafile(), mcachefs_metadata_fd);
 
         struct mcachefs_metadata_head_t head;
         int res = pread(mcachefs_metadata_fd, &head,
@@ -336,9 +318,7 @@ mcachefs_metadata_open()
     }
     else
     {
-        mcachefs_metadata_fd =
-            open(mcachefs_config_get_metafile(), O_CREAT | O_TRUNC | O_RDWR,
-                 (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH));
+        mcachefs_metadata_fd = open(mcachefs_config_get_metafile(), O_CREAT | O_TRUNC | O_RDWR, (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH));
     }
 
     if (mcachefs_metadata_fd == -1)
@@ -364,18 +344,14 @@ mcachefs_metadata_open()
         Log("Openned file ok.\n");
     }
 
-    mcachefs_metadata_head = mmap(NULL, MCACHEFS_METADATA_ENTRY_SIZE,
-                                  PROT_READ | PROT_WRITE, MAP_SHARED,
-                                  mcachefs_metadata_fd, 0);
+    mcachefs_metadata_head = mmap(NULL, MCACHEFS_METADATA_ENTRY_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, mcachefs_metadata_fd, 0);
 
-    if (mcachefs_metadata_head == NULL
-        || mcachefs_metadata_head == MAP_FAILED)
+    if (mcachefs_metadata_head == NULL || mcachefs_metadata_head == MAP_FAILED)
     {
         Err("Could not open metadata !\n");
         exit(-1);
     }
-    Log("Openned metafile '%s', head=%p\n", mcachefs_config_get_metafile(),
-        mcachefs_metadata_head);
+    Log("Openned metafile '%s', head=%p\n", mcachefs_config_get_metafile(), mcachefs_metadata_head);
 
     mcachefs_resize_metadata_map();
     mcachefs_metadata_reset_fh();
@@ -411,18 +387,17 @@ mcachefs_metadata_flush()
     int count_open, count_journal_entries;
 
     count_open = mcachefs_file_timeslices_count_open();
-    if ( count_open > 0 )
+    if (count_open > 0)
     {
         Warn("Filesystem is busy ! %d files open !\n", count_open);
     }
 
     count_journal_entries = mcachefs_journal_count_entries();
-    if ( count_journal_entries )
+    if (count_journal_entries)
     {
-        Err("Journal has %d entries ! Will not flush metadata, apply journal first !\n",
-            count_journal_entries);
-        return;    
-    } 
+        Err("Journal has %d entries ! Will not flush metadata, apply journal first !\n", count_journal_entries);
+        return;
+    }
 
     Info("Flushing metadata :\n");
     mcachefs_metadata_lock();
@@ -433,14 +408,12 @@ mcachefs_metadata_flush()
     Info("\tTruncating '%s'\n", mcachefs_config_get_metafile());
     if (truncate(mcachefs_config_get_metafile(), 0))
     {
-        Err("Could not truncate '%s' : %d:%s\n",
-            mcachefs_config_get_metafile(), errno, strerror(errno));
+        Err("Could not truncate '%s' : %d:%s\n", mcachefs_config_get_metafile(), errno, strerror(errno));
     }
     Info("\tUnlinking '%s'\n", mcachefs_config_get_metafile());
     if (unlink(mcachefs_config_get_metafile()))
     {
-        Err("Could not unlink '%s' : %d:%s\n",
-            mcachefs_config_get_metafile(), errno, strerror(errno));
+        Err("Could not unlink '%s' : %d:%s\n", mcachefs_config_get_metafile(), errno, strerror(errno));
     }
     Info("\tRe-openning '%s'\n", mcachefs_config_get_metafile());
     mcachefs_metadata_open();
@@ -488,81 +461,71 @@ mcachefs_metadata_allocate()
 {
     if (!mcachefs_metadata_head->first_free)
     {
-        Log("Allocate : alloced_nb=%llu\n",
-            mcachefs_metadata_head->alloced_nb);
-        mcachefs_metadata_id first_alloced =
-            mcachefs_metadata_head->alloced_nb;
-        mcachefs_metadata_id last_alloced =
-            first_alloced + MCACHEFS_METADATA_BLOCK_ENTRY_COUNT;
+        Log("Allocate : alloced_nb=%llu\n", mcachefs_metadata_head->alloced_nb);
+        mcachefs_metadata_id first_alloced = mcachefs_metadata_head->alloced_nb;
+        mcachefs_metadata_id last_alloced = first_alloced + MCACHEFS_METADATA_BLOCK_ENTRY_COUNT;
 
         mcachefs_metadata_extend_free_entries(first_alloced, last_alloced);
 
         mcachefs_metadata_head->first_free = first_alloced;
         mcachefs_metadata_head->alloced_nb = last_alloced;
 
-        Log("Allocate : first_free=%llu, alloced_nb=%llu\n",
-            mcachefs_metadata_head->first_free,
-            mcachefs_metadata_head->alloced_nb);
+        Log("Allocate : first_free=%llu, alloced_nb=%llu\n", mcachefs_metadata_head->first_free, mcachefs_metadata_head->alloced_nb);
         mcachefs_resize_metadata_map();
     }
-    struct mcachefs_metadata_t *next =
-        mcachefs_metadata_do_get(mcachefs_metadata_head->first_free);
+    struct mcachefs_metadata_t *next = mcachefs_metadata_do_get(mcachefs_metadata_head->first_free);
     mcachefs_metadata_head->first_free = next->next;
 
     if (next->id == 0)
     {
         Bug("Invalid next !\n");
     }
-    Log("Allocate : provided next=%llu, next->next=%llu\n", next->id,
-        next->next);
+    Log("Allocate : provided next=%llu, next->next=%llu\n", next->id, next->next);
 
     return next->id;
 }
 
 #if 1
-int 
-mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
-                         int path_size)
+int
+mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path, int path_size)
 {
-    Log("Equals : mdata=%p:%s (father=%llu), path=%s, path_size=%d\n",
-        mdata, mdata->d_name, mdata->father, path, path_size);
-    const char* namestack[MCACHEFS_METADATA_MAX_LEVELS];
+    Log("Equals : mdata=%p:%s (father=%llu), path=%s, path_size=%d\n", mdata, mdata->d_name, mdata->father, path, path_size);
+    const char *namestack[MCACHEFS_METADATA_MAX_LEVELS];
     int levels = 0;
-    
+
     struct mcachefs_metadata_t *current = mdata;
-    while ( current->father )
+    while (current->father)
     {
         namestack[levels] = current->d_name;
         levels++;
-        if ( levels == MCACHEFS_METADATA_MAX_LEVELS )
+        if (levels == MCACHEFS_METADATA_MAX_LEVELS)
         {
-            Bug("Maximum level of hierarchy (%d) reached in path '%s'!\n", 
-                levels, path);
+            Bug("Maximum level of hierarchy (%d) reached in path '%s'!\n", levels, path);
         }
         current = mcachefs_metadata_get(current->father);
     }
-    
+
     int current_level = levels - 1, path_idx = 0;
-    const char* current_name = namestack[current_level];
-    const char* cpath = path;
-    cpath++;    
-    for ( ; *cpath ; cpath++ )
+    const char *current_name = namestack[current_level];
+    const char *cpath = path;
+    cpath++;
+    for (; *cpath; cpath++)
     {
         path_idx++;
-        if ( path_idx == path_size )
+        if (path_idx == path_size)
         {
             Log("Perfect match, even if path_size is partial !\n");
             return 1;
         }
-        if ( !*current_name )
+        if (!*current_name)
         {
-            if ( *cpath != '/' )
+            if (*cpath != '/')
             {
                 Log("Should have a '/' separator here, probably a collision !\n");
                 Bug(".");
                 return 0;
             }
-            if ( current_level > 0 )
+            if (current_level > 0)
             {
                 current_level--;
                 current_name = namestack[current_level];
@@ -575,15 +538,15 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
                 return 0;
             }
         }
-        
-        if ( *cpath != *current_name )
+
+        if (*cpath != *current_name)
         {
             Log("Colliding ! cpath=%s, current_name=%s\n", cpath, current_name);
             return 0;
         }
         current_name++;
     }
-    if ( current_level == 0 && !*current_name )
+    if (current_level == 0 && !*current_name)
     {
         Log("Found a perfect match !!\n");
         return 1;
@@ -593,15 +556,13 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
 }
 #else
 int
-mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
-                         int path_size)
+mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path, int path_size)
 {
     int path_start;
 
     while (1)
     {
-        Log("Equals : mdata=%p:%s (father=%llu), path=%s, path_size=%d\n",
-            mdata, mdata->d_name, mdata->father, path, path_size);
+        Log("Equals : mdata=%p:%s (father=%llu), path=%s, path_size=%d\n", mdata, mdata->d_name, mdata->father, path, path_size);
 
         if (path_size <= 1)
             return mdata->father == 0;
@@ -612,11 +573,9 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
 
         Log("=>path_start=%d\n", path_start);
 
-        if (strncmp(mdata->d_name, &(path[path_start + 1]),
-                    path_size - path_start - 1))
+        if (strncmp(mdata->d_name, &(path[path_start + 1]), path_size - path_start - 1))
         {
-            Log("Colliding : mdata=%s, rpath=%s (up to %d)\n", mdata->d_name,
-                &(path[path_start + 1]), path_size - path_start - 1);
+            Log("Colliding : mdata=%s, rpath=%s (up to %d)\n", mdata->d_name, &(path[path_start + 1]), path_size - path_start - 1);
             return 0;
         }
 
@@ -659,8 +618,7 @@ mcachefs_metadata_do_insert_hash(struct mcachefs_metadata_t *newmeta)
             current->left = newmeta->id;
             newmeta->up = current->id;
 
-            Log_M("HASH Insert (%llu)->left=%llu\n", current->id,
-                  newmeta->id);
+            Log_M("HASH Insert (%llu)->left=%llu\n", current->id, newmeta->id);
             return;
         }
         else if (current->hash < newmeta->hash)
@@ -672,8 +630,7 @@ mcachefs_metadata_do_insert_hash(struct mcachefs_metadata_t *newmeta)
             }
             current->right = newmeta->id;
             newmeta->up = current->id;
-            Log_M("HASH Insert (%llu)->right=%llu\n", current->id,
-                  newmeta->id);
+            Log_M("HASH Insert (%llu)->right=%llu\n", current->id, newmeta->id);
             return;
 
         }
@@ -683,24 +640,22 @@ mcachefs_metadata_do_insert_hash(struct mcachefs_metadata_t *newmeta)
             current = mcachefs_metadata_do_get(current->collision_next);
             continue;
         }
-        Log("Added collider : cur=%llu '%s', new=%llu '%s', hash='%llx'\n",
-            current->id, current->d_name, newmeta->id, newmeta->d_name,
-            _llu(current->hash));
+        Log("Added collider : cur=%llu '%s', new=%llu '%s', hash='%llx'\n", current->id, current->d_name, newmeta->id, newmeta->d_name, _llu(current->hash));
         current->collision_next = newmeta->id;
         newmeta->collision_previous = current->id;
         return;
     }
 }
 
-struct mcachefs_metadata_t* 
+struct mcachefs_metadata_t *
 mcachefs_metadata_brother(struct mcachefs_metadata_t *meta)
 {
-    struct mcachefs_metadata_t* father;
+    struct mcachefs_metadata_t *father;
     mcachefs_metadata_id brotherid;
-    if ( meta->up )
+    if (meta->up)
     {
         father = mcachefs_metadata_get(meta->up);
-        if ( father->left == meta->id )
+        if (father->left == meta->id)
         {
             brotherid = father->right;
         }
@@ -708,7 +663,7 @@ mcachefs_metadata_brother(struct mcachefs_metadata_t *meta)
         {
             brotherid = father->left;
         }
-        if ( ! brotherid )
+        if (!brotherid)
         {
             return NULL;
         }
@@ -717,11 +672,11 @@ mcachefs_metadata_brother(struct mcachefs_metadata_t *meta)
     return NULL;
 }
 
-struct mcachefs_metadata_t* 
+struct mcachefs_metadata_t *
 mcachefs_metadata_uncle(struct mcachefs_metadata_t *meta)
 {
-    struct mcachefs_metadata_t* father;
-    if ( meta->up )
+    struct mcachefs_metadata_t *father;
+    if (meta->up)
     {
         father = mcachefs_metadata_get(meta->up);
         return mcachefs_metadata_brother(father);
@@ -733,22 +688,22 @@ void
 mcachefs_metadata_rotate_left(struct mcachefs_metadata_t *x)
 {
     Log("Rotate left %llu, ->right=%llu\n", x->id, x->right);
-    if ( !x->right )
+    if (!x->right)
     {
         return;
     }
     struct mcachefs_metadata_t *y = mcachefs_metadata_get(x->right);
     x->right = y->left;
-    if ( y->left )
+    if (y->left)
     {
         mcachefs_metadata_get(y->left)->up = x->id;
     }
     y->up = x->up;
-    if ( !x->up )
+    if (!x->up)
     {
         mcachefs_metadata_head->hash_root = y->id;
     }
-    else if ( x->id == mcachefs_metadata_get(x->up)->left)
+    else if (x->id == mcachefs_metadata_get(x->up)->left)
     {
         mcachefs_metadata_get(x->up)->left = y->id;
     }
@@ -764,22 +719,22 @@ void
 mcachefs_metadata_rotate_right(struct mcachefs_metadata_t *x)
 {
     Log("Rotate right %llu, ->left=%llu\n", x->id, x->left);
-    if ( !x->left )
+    if (!x->left)
     {
         return;
     }
     struct mcachefs_metadata_t *y = mcachefs_metadata_get(x->left);
     x->left = y->right;
-    if ( y->right )
+    if (y->right)
     {
         mcachefs_metadata_get(y->right)->up = x->id;
     }
     y->up = x->up;
-    if ( !x->up )
+    if (!x->up)
     {
         mcachefs_metadata_head->hash_root = y->id;
     }
-    else if ( x->id == mcachefs_metadata_get(x->up)->left)
+    else if (x->id == mcachefs_metadata_get(x->up)->left)
     {
         mcachefs_metadata_get(x->up)->left = y->id;
     }
@@ -796,7 +751,7 @@ mcachefs_metadata_repair_hash_step4_2(struct mcachefs_metadata_t *newmeta)
 {
     struct mcachefs_metadata_t *father = mcachefs_metadata_get(newmeta->up);
     struct mcachefs_metadata_t *grandfather = mcachefs_metadata_get(father->up);
-    if ( newmeta->id == father->left )
+    if (newmeta->id == father->left)
     {
         mcachefs_metadata_rotate_right(grandfather);
     }
@@ -812,25 +767,25 @@ mcachefs_metadata_repair_hash_step4_2(struct mcachefs_metadata_t *newmeta)
 void
 mcachefs_metadata_repair_hash(struct mcachefs_metadata_t *newmeta)
 {
-    struct mcachefs_metadata_t* father, *uncle, *grandfather, *sibling = newmeta;
+    struct mcachefs_metadata_t *father, *uncle, *grandfather, *sibling = newmeta;
     Log("repair : repairing id %llu, color=%s\n", newmeta->id, _COLOR(newmeta));
-    if ( !newmeta->up )
+    if (!newmeta->up)
     {
         Log("repair : case 1\n");
         newmeta->color = BLACK;
     }
-    else if ( (father = mcachefs_metadata_get(newmeta->up))->color == BLACK )
+    else if ((father = mcachefs_metadata_get(newmeta->up))->color == BLACK)
     {
         Log("repair : case 2\n");
         // Nothing to do here
     }
-    else if ( (uncle = mcachefs_metadata_uncle(newmeta)) != NULL && uncle->color == RED )
+    else if ((uncle = mcachefs_metadata_uncle(newmeta)) != NULL && uncle->color == RED)
     {
         Log("repair : case 3, uncle=%llu\n", uncle->id);
-        
+
         father->color = BLACK;
         uncle->color = BLACK;
-        
+
         grandfather = mcachefs_metadata_get(father->up);
         grandfather->color = RED;
         mcachefs_metadata_repair_hash(grandfather);
@@ -838,19 +793,19 @@ mcachefs_metadata_repair_hash(struct mcachefs_metadata_t *newmeta)
     else
     {
         Log("repair : case 4, grandfather %llu\n", father->up);
-        
+
         grandfather = mcachefs_metadata_get(father->up);
-        if ( grandfather->left && newmeta->id == mcachefs_metadata_get(grandfather->left)->right )
+        if (grandfather->left && newmeta->id == mcachefs_metadata_get(grandfather->left)->right)
         {
             mcachefs_metadata_rotate_left(father);
             sibling = mcachefs_metadata_get(newmeta->left);
         }
-        else if ( grandfather->right && newmeta->id == mcachefs_metadata_get(grandfather->right)->left )
+        else if (grandfather->right && newmeta->id == mcachefs_metadata_get(grandfather->right)->left)
         {
             mcachefs_metadata_rotate_right(father);
             sibling = mcachefs_metadata_get(newmeta->right);
         }
-        if ( sibling != NULL )
+        if (sibling != NULL)
         {
             mcachefs_metadata_repair_hash_step4_2(sibling);
         }
@@ -864,9 +819,9 @@ mcachefs_metadata_insert_hash(struct mcachefs_metadata_t *newmeta)
     Log("Inserting hash id=%llu, hash=%llx\n", newmeta->id, _llu(newmeta->hash));
     mcachefs_metadata_do_insert_hash(newmeta);
     newmeta->color = RED;
-    
+
     Log("Inserted hash id=%llu, up=%llu\n", newmeta->id, newmeta->up);
-    
+
     Log("Reparing hash id=%llu, hash=%llx\n", newmeta->id, _llu(newmeta->hash));
     mcachefs_metadata_repair_hash(newmeta);
     Log("Reparing hash id=%llu, hash=%llx OK\n", newmeta->id, _llu(newmeta->hash));
@@ -883,20 +838,20 @@ mcachefs_metadata_reinsert_hash(struct mcachefs_metadata_t *mdata)
     /*
      * We do not need to handle collisions here as we reinsert at the correct hash
      */
-    struct mcachefs_metadata_t* left = mdata->left ? mcachefs_metadata_get(mdata->left) : NULL;
-    struct mcachefs_metadata_t* right = mdata->right ? mcachefs_metadata_get(mdata->right) : NULL;    
-    
+    struct mcachefs_metadata_t *left = mdata->left ? mcachefs_metadata_get(mdata->left) : NULL;
+    struct mcachefs_metadata_t *right = mdata->right ? mcachefs_metadata_get(mdata->right) : NULL;
+
     mdata->left = 0;
     mdata->right = 0;
     mdata->up = 0;
-    
+
     mcachefs_metadata_insert_hash(mdata);
-    
-    if ( left )
+
+    if (left)
     {
         mcachefs_metadata_reinsert_hash(left);
     }
-    if ( right )
+    if (right)
     {
         mcachefs_metadata_reinsert_hash(right);
     }
@@ -908,18 +863,18 @@ mcachefs_metadata_do_remove_hash_collision(struct mcachefs_metadata_t *mdata)
     Log("Removing a standalone collider, prev=%llu, next=%llu\n", mdata->collision_previous, mdata->collision_next);
     struct mcachefs_metadata_t *next = mdata->collision_next ? mcachefs_metadata_do_get(mdata->collision_next) : NULL;
 
-    if ( !mdata->collision_previous )
+    if (!mdata->collision_previous)
     {
-        if ( ! next )
+        if (!next)
         {
             Bug("I have no previous, I should have a next !\n");
         }
         // I am the head of my collision list !
-        if ( mdata->up )
+        if (mdata->up)
         {
-            struct mcachefs_metadata_t* up = mcachefs_metadata_do_get(mdata->up);
+            struct mcachefs_metadata_t *up = mcachefs_metadata_do_get(mdata->up);
             int iamleft = (up->left == mdata->id);
-            if ( iamleft )
+            if (iamleft)
             {
                 up->left = next->id;
             }
@@ -928,28 +883,27 @@ mcachefs_metadata_do_remove_hash_collision(struct mcachefs_metadata_t *mdata)
                 up->right = next->id;
             }
         }
-        else 
+        else
         {
-            if ( mcachefs_metadata_head->hash_root != mdata->id )
+            if (mcachefs_metadata_head->hash_root != mdata->id)
             {
-                Bug("I (%llu) am the head of my collision list, I have no up, but am not root (is %llu)\n",
-                    mdata->id, mcachefs_metadata_head->hash_root);
+                Bug("I (%llu) am the head of my collision list, I have no up, but am not root (is %llu)\n", mdata->id, mcachefs_metadata_head->hash_root);
             }
             Log("The next collider will become root !\n");
             mcachefs_metadata_set_hash_root(next);
         }
-        if ( mdata->left )
+        if (mdata->left)
         {
-            if ( next->left )
+            if (next->left)
             {
                 Bug("Next collider can not have a left !\n");
             }
             next->left = mdata->left;
             mcachefs_metadata_do_get(mdata->left)->up = next->id;
         }
-        if ( mdata->right )
+        if (mdata->right)
         {
-            if ( next->right )
+            if (next->right)
             {
                 Bug("Next collider can not have a right !\n");
             }
@@ -962,21 +916,21 @@ mcachefs_metadata_do_remove_hash_collision(struct mcachefs_metadata_t *mdata)
         struct mcachefs_metadata_t *previous = mcachefs_metadata_do_get(mdata->collision_previous);
         previous->collision_next = mdata->collision_next;
     }
-    if ( next )
+    if (next)
     {
         next->collision_previous = mdata->collision_previous;
     }
 }
 
-struct mcachefs_metadata_t*
+struct mcachefs_metadata_t *
 mcachefs_metadata_find_successor(struct mcachefs_metadata_t *mdata)
 {
-    while(mdata->left)
+    while (mdata->left)
         mdata = mcachefs_metadata_get(mdata->left);
     return mdata;
 }
 
-struct mcachefs_metadata_t*
+struct mcachefs_metadata_t *
 mcachefs_metadata_find_replacer(struct mcachefs_metadata_t *mdata)
 {
     if (mdata->left && mdata->right)
@@ -991,11 +945,10 @@ mcachefs_metadata_find_replacer(struct mcachefs_metadata_t *mdata)
 void
 mcachefs_metadata_check_no_self_reference(struct mcachefs_metadata_t *mdata)
 {
-#if 1 // PARANOID
-    if ( mdata->left == mdata->id || mdata->right == mdata->id || mdata->up == mdata->id )
+#if 1                           // PARANOID
+    if (mdata->left == mdata->id || mdata->right == mdata->id || mdata->up == mdata->id)
     {
-        Bug ("Corrupted entry ! %llu %s left=%llu, right=%llu, up=%llu\n", 
-            mdata->id, _COLOR(mdata), mdata->left, mdata->right, mdata->up);
+        Bug("Corrupted entry ! %llu %s left=%llu, right=%llu, up=%llu\n", mdata->id, _COLOR(mdata), mdata->left, mdata->right, mdata->up);
     }
 #endif
 }
@@ -1003,28 +956,27 @@ mcachefs_metadata_check_no_self_reference(struct mcachefs_metadata_t *mdata)
 void
 mcachefs_metadata_fix_double_black(struct mcachefs_metadata_t *mdata)
 {
-    Log("Fix Double %llu %s left=%llu, right=%llu, up=%llu\n", 
-        mdata->id, _COLOR(mdata), mdata->left, mdata->right, mdata->up);
+    Log("Fix Double %llu %s left=%llu, right=%llu, up=%llu\n", mdata->id, _COLOR(mdata), mdata->left, mdata->right, mdata->up);
     mcachefs_metadata_check_no_self_reference(mdata);
-    if ( !mdata->up )
+    if (!mdata->up)
     {
         Log("Reached root !\n");
         return;
     }
     struct mcachefs_metadata_t *brother = mcachefs_metadata_brother(mdata);
     struct mcachefs_metadata_t *up = mcachefs_metadata_get(mdata->up);
-    if ( brother == NULL )
+    if (brother == NULL)
     {
         mcachefs_metadata_fix_double_black(up);
     }
     else
     {
         int brother_is_left = up->left == brother->id;
-        if ( brother->color == RED )
+        if (brother->color == RED)
         {
             up->color = RED;
             brother->color = BLACK;
-            if ( brother_is_left )
+            if (brother_is_left)
             {
                 mcachefs_metadata_rotate_right(up);
             }
@@ -1038,11 +990,11 @@ mcachefs_metadata_fix_double_black(struct mcachefs_metadata_t *mdata)
         {
             int has_left_red_child = brother->left && mcachefs_metadata_get(brother->left)->color == RED;
             int has_right_red_child = brother->right && mcachefs_metadata_get(brother->right)->color == RED;
-            if ( has_left_red_child || has_right_red_child )
+            if (has_left_red_child || has_right_red_child)
             {
-                if ( has_left_red_child )
+                if (has_left_red_child)
                 {
-                    if ( brother_is_left )
+                    if (brother_is_left)
                     {
                         mcachefs_metadata_get(brother->left)->color = brother->color;
                         brother->color = up->color;
@@ -1057,7 +1009,7 @@ mcachefs_metadata_fix_double_black(struct mcachefs_metadata_t *mdata)
                 }
                 else
                 {
-                    if ( brother_is_left )
+                    if (brother_is_left)
                     {
                         mcachefs_metadata_get(brother->right)->color = up->color;
                         mcachefs_metadata_rotate_left(brother);
@@ -1076,7 +1028,7 @@ mcachefs_metadata_fix_double_black(struct mcachefs_metadata_t *mdata)
             {
                 // 2 black children 
                 brother->color = RED;
-                if ( up->color == BLACK )
+                if (up->color == BLACK)
                 {
                     mcachefs_metadata_fix_double_black(up);
                 }
@@ -1092,24 +1044,24 @@ mcachefs_metadata_fix_double_black(struct mcachefs_metadata_t *mdata)
 void
 mcachefs_metadata_hash_swap_restore(struct mcachefs_metadata_t *first, int isleft)
 {
-    if ( first->up )
+    if (first->up)
     {
-        if ( isleft )
+        if (isleft)
         {
-            mcachefs_metadata_get(first->up)->left  = first->id;
+            mcachefs_metadata_get(first->up)->left = first->id;
         }
         else
         {
-            mcachefs_metadata_get(first->up)->right  = first->id;
+            mcachefs_metadata_get(first->up)->right = first->id;
         }
     }
-    if ( first->left )
+    if (first->left)
     {
-        mcachefs_metadata_get(first->left)->up  = first->id;
+        mcachefs_metadata_get(first->left)->up = first->id;
     }
-    if ( first->right )
+    if (first->right)
     {
-        mcachefs_metadata_get(first->right)->up  = first->id;
+        mcachefs_metadata_get(first->right)->up = first->id;
     }
 }
 
@@ -1118,8 +1070,8 @@ mcachefs_metadata_hash_swap(struct mcachefs_metadata_t *first, struct mcachefs_m
 {
     mcachefs_metadata_check_no_self_reference(first);
     mcachefs_metadata_check_no_self_reference(second);
-    
-    if ( second->up == first->id )
+
+    if (second->up == first->id)
     {
         Log("Son/father relationship switching swaps\n");
         mcachefs_metadata_hash_swap(second, first);
@@ -1132,17 +1084,17 @@ mcachefs_metadata_hash_swap(struct mcachefs_metadata_t *first, struct mcachefs_m
     int temp_color = first->color;
     first->color = second->color;
     second->color = temp_color;
-    
-    if ( first->up == second->id )
+
+    if (first->up == second->id)
     {
         Log("Father/son relationship ! Handle it directly\n");
-        
+
         first->up = second->up;
         second->up = first->id;
 
         mcachefs_metadata_id otherchild = second->left == first->id ? second->right : second->left;
-        
-        if ( first_isleft )
+
+        if (first_isleft)
         {
             first->left = second->id;
             first->right = otherchild;
@@ -1152,36 +1104,36 @@ mcachefs_metadata_hash_swap(struct mcachefs_metadata_t *first, struct mcachefs_m
             first->left = otherchild;
             first->right = second->id;
         }
-        
+
         second->left = temp_left;
         second->right = temp_right;
-       
+
         mcachefs_metadata_hash_swap_restore(first, second_isleft);
         mcachefs_metadata_hash_swap_restore(second, first_isleft);
         mcachefs_metadata_check_no_self_reference(first);
         mcachefs_metadata_check_no_self_reference(second);
-        
+
         return;
     }
-    if ( first->left == second->id || first->right == second->id )
+    if (first->left == second->id || first->right == second->id)
     {
         Bug("Second is child of first !\n");
     }
-    else if ( second->left == first->id || second->right == first->id )
+    else if (second->left == first->id || second->right == first->id)
     {
-        Bug("First is child of second !\n");   
+        Bug("First is child of second !\n");
     }
 
     Log("Swapping %llu and %llu\n", first->id, second->id);
-  
+
     first->up = second->up;
     first->left = second->left;
     first->right = second->right;
-    
+
     second->up = temp_up;
     second->left = temp_left;
     second->right = temp_right;
-    
+
     mcachefs_metadata_hash_swap_restore(first, second_isleft);
     mcachefs_metadata_hash_swap_restore(second, first_isleft);
 
@@ -1192,8 +1144,7 @@ mcachefs_metadata_hash_swap(struct mcachefs_metadata_t *first, struct mcachefs_m
 void
 mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
 {
-    Log("Removing meta %llu, lr %llu,%llu, up %llu !\n", 
-        mdata->id, mdata->left, mdata->right, mdata->up);
+    Log("Removing meta %llu, lr %llu,%llu, up %llu !\n", mdata->id, mdata->left, mdata->right, mdata->up);
     mcachefs_metadata_check_no_self_reference(mdata);
 
     if (mdata->collision_previous || mdata->collision_next)
@@ -1204,31 +1155,31 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
     struct mcachefs_metadata_t *up = mdata->up ? mcachefs_metadata_do_get(mdata->up) : NULL;
     int iamleft = up ? (up->left == mdata->id) : 0;
 
-    struct mcachefs_metadata_t* replacer = mcachefs_metadata_find_replacer(mdata);
+    struct mcachefs_metadata_t *replacer = mcachefs_metadata_find_replacer(mdata);
     int uvBlack = ((replacer == NULL || replacer->color == BLACK) && (mdata->color == BLACK));
 
-    if ( replacer == NULL )
+    if (replacer == NULL)
     {
         Log("No replacer, left=%llu, right=%llu\n", mdata->left, mdata->right);
-        if ( mdata->id == mcachefs_metadata_head->hash_root )
+        if (mdata->id == mcachefs_metadata_head->hash_root)
         {
             Bug("Deleted the root with no child !\n");
         }
         else
         {
-            if ( uvBlack )
+            if (uvBlack)
             {
                 mcachefs_metadata_fix_double_black(mdata);
             }
             else
             {
-                struct mcachefs_metadata_t* brother = mcachefs_metadata_brother(mdata);
-                if ( brother )
+                struct mcachefs_metadata_t *brother = mcachefs_metadata_brother(mdata);
+                if (brother)
                 {
                     brother->color = RED;
                 }
             }
-            if ( iamleft )
+            if (iamleft)
             {
                 up->left = 0;
             }
@@ -1240,13 +1191,12 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
             return;
         }
     }
-    if ( !mdata->left || !mdata->right )
+    if (!mdata->left || !mdata->right)
     {
-        Log("Replacer %llu, from mdata=%llu left=%llu, right=%llu, up=%llu\n", 
-            replacer->id, mdata->id, mdata->left, mdata->right, mdata->up);
-        if ( ! up )
+        Log("Replacer %llu, from mdata=%llu left=%llu, right=%llu, up=%llu\n", replacer->id, mdata->id, mdata->left, mdata->right, mdata->up);
+        if (!up)
         {
-            if ( mdata->id != mcachefs_metadata_head->hash_root )
+            if (mdata->id != mcachefs_metadata_head->hash_root)
             {
                 Bug("I have no up, but I'm no root ?\n");
             }
@@ -1254,7 +1204,7 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
         }
         else
         {
-            if ( iamleft )
+            if (iamleft)
             {
                 up->left = replacer->id;
             }
@@ -1263,7 +1213,7 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
                 up->right = replacer->id;
             }
             replacer->up = up->id;
-            if ( uvBlack )
+            if (uvBlack)
             {
                 mcachefs_metadata_fix_double_black(replacer);
             }
@@ -1274,8 +1224,7 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
         }
         return;
     }
-    Log("Swap %llu with replacer %llu, left=%llu, right=%llu\n", 
-        mdata->id, replacer->id, mdata->left, mdata->right);
+    Log("Swap %llu with replacer %llu, left=%llu, right=%llu\n", mdata->id, replacer->id, mdata->left, mdata->right);
     mcachefs_metadata_hash_swap(replacer, mdata);
     mcachefs_metadata_do_remove_hash(mdata);
 }
@@ -1295,13 +1244,11 @@ mcachefs_metadata_find_hash(const char *path, hash_t hash, int path_size)
 {
     struct mcachefs_metadata_t *current = mcachefs_metadata_get_hash_root();
 
-    Log_H("Finding hash for '%s' (up to %d chars) : hash=%llx \n", path,
-        path_size, hash);
+    Log_H("Finding hash for '%s' (up to %d chars) : hash=%llx \n", path, path_size, hash);
 
     while (current)
     {
-        Log_H("At current=%p (%s), hash=%llx\n", current, current->d_name,
-            current->hash);
+        Log_H("At current=%p (%s), hash=%llx\n", current, current->d_name, current->hash);
         if (hash < current->hash)
         {
             current = mcachefs_metadata_do_get(current->left);
@@ -1324,11 +1271,9 @@ mcachefs_metadata_find_hash(const char *path, hash_t hash, int path_size)
 }
 
 void
-mcachefs_metadata_build_hash(struct mcachefs_metadata_t *father,
-                             struct mcachefs_metadata_t *child)
+mcachefs_metadata_build_hash(struct mcachefs_metadata_t *father, struct mcachefs_metadata_t *child)
 {
-    child->hash =
-        father->father ? continueHash(father->hash, "/") : father->hash;
+    child->hash = father->father ? continueHash(father->hash, "/") : father->hash;
     child->hash = continueHash(child->hash, child->d_name);
 }
 
@@ -1343,8 +1288,7 @@ mcachefs_metadata_rehash_children(struct mcachefs_metadata_t *mdata)
     mcachefs_metadata_id rootid = mdata->id;
     mcachefs_metadata_id fatherid = rootid;
 
-    Log("mdata_rehash_children at mdata=%llu '%s'\n", mdata->id,
-        mdata->d_name);
+    Log("mdata_rehash_children at mdata=%llu '%s'\n", mdata->id, mdata->d_name);
 
     child = mcachefs_metadata_get_child(mdata);
     mdata = NULL;
@@ -1352,8 +1296,7 @@ mcachefs_metadata_rehash_children(struct mcachefs_metadata_t *mdata)
     if (!child)
     {
         mdata = mcachefs_metadata_do_get(rootid);
-        Log("Empty child ? rootid=%llu, mdata->child=%llu\n", rootid,
-            mdata->child);
+        Log("Empty child ? rootid=%llu, mdata->child=%llu\n", rootid, mdata->child);
         return;
     }
 
@@ -1361,8 +1304,7 @@ mcachefs_metadata_rehash_children(struct mcachefs_metadata_t *mdata)
 
     while (1)
     {
-        Log("childid=%llu, fatherid=%llu, rootid=%llu\n", childid, fatherid,
-            rootid);
+        Log("childid=%llu, fatherid=%llu, rootid=%llu\n", childid, fatherid, rootid);
 
         child = mcachefs_metadata_do_get(childid);
 
@@ -1429,8 +1371,7 @@ mcachefs_metadata_rehash_children(struct mcachefs_metadata_t *mdata)
  * add, fetch, interpolate (to be done)
  */
 void
-mcachefs_metadata_link_entry(struct mcachefs_metadata_t *father,
-                             struct mcachefs_metadata_t *child)
+mcachefs_metadata_link_entry(struct mcachefs_metadata_t *father, struct mcachefs_metadata_t *child)
 {
     child->father = father->id;
 
@@ -1452,8 +1393,7 @@ mcachefs_metadata_unlink_entry(struct mcachefs_metadata_t *mdata)
     }
     father = mcachefs_metadata_do_get(mdata->father);
 
-    Log("unlink_entry, mdata=%llu:%s, father=%llu:%s\n", mdata->id,
-        mdata->d_name, father->id, father->d_name);
+    Log("unlink_entry, mdata=%llu:%s, father=%llu:%s\n", mdata->id, mdata->d_name, father->id, father->d_name);
 
     if (father->child == mdata->id)
     {
@@ -1461,8 +1401,7 @@ mcachefs_metadata_unlink_entry(struct mcachefs_metadata_t *mdata)
         return;
     }
 
-    for (next = mcachefs_metadata_do_get(father->child); next->next; 
-         next = mcachefs_metadata_do_get(next->next))
+    for (next = mcachefs_metadata_do_get(father->child); next->next; next = mcachefs_metadata_do_get(next->next))
     {
         if (next->next == mdata->id)
         {
@@ -1471,13 +1410,11 @@ mcachefs_metadata_unlink_entry(struct mcachefs_metadata_t *mdata)
         }
     }
 
-    Bug("Child '%s' (%llu) is not child of father '%s' (%llu)\n",
-        mdata->d_name, mdata->id, father->d_name, mdata->id);
+    Bug("Child '%s' (%llu) is not child of father '%s' (%llu)\n", mdata->d_name, mdata->id, father->d_name, mdata->id);
 }
 
 void
-mcachefs_metadata_do_add_child(struct mcachefs_metadata_t *father,
-                               struct mcachefs_metadata_t *child)
+mcachefs_metadata_do_add_child(struct mcachefs_metadata_t *father, struct mcachefs_metadata_t *child)
 {
     child->father = father->id;
     if (father->child == 0 || father->child == mcachefs_metadata_id_EMPTY)
@@ -1495,8 +1432,7 @@ mcachefs_metadata_do_add_child(struct mcachefs_metadata_t *father,
 }
 
 void
-mcachefs_metadata_add_child_ids(mcachefs_metadata_id father_id,
-                                mcachefs_metadata_id child_id)
+mcachefs_metadata_add_child_ids(mcachefs_metadata_id father_id, mcachefs_metadata_id child_id)
 {
     struct mcachefs_metadata_t *father = mcachefs_metadata_do_get(father_id);
     struct mcachefs_metadata_t *child = mcachefs_metadata_do_get(child_id);
@@ -1512,15 +1448,13 @@ mcachefs_metadata_recurse_open(struct mcachefs_metadata_t *father)
     {
         return open(mcachefs_config_get_source(), O_RDONLY);
     }
-    fd = mcachefs_metadata_recurse_open(mcachefs_metadata_do_get
-                                        (father->father));
+    fd = mcachefs_metadata_recurse_open(mcachefs_metadata_do_get(father->father));
     if (fd == -1)
         return fd;
     fd2 = openat(fd, father->d_name, O_RDONLY);
     if (fd2 == -1)
     {
-        Err("Could not open '%s', err=%d:%s\n", father->d_name, errno,
-            strerror(errno));
+        Err("Could not open '%s', err=%d:%s\n", father->d_name, errno, strerror(errno));
     }
 
     Log("fd=%d, fd2=%d, d_name=%s\n", fd, fd2, father->d_name);
@@ -1540,13 +1474,11 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
     }
     else if (father->child)
     {
-        Log("Father %s (%llu) has an explicit child %llu\n", father->d_name,
-            father->id, father->child);
+        Log("Father %s (%llu) has an explicit child %llu\n", father->d_name, father->id, father->child);
         return mcachefs_metadata_do_get(father->child);
     }
 
-    Log("We must lookup child for father=%s (%p:%llu)\n", father->d_name,
-        father, father->id);
+    Log("We must lookup child for father=%s (%p:%llu)\n", father->d_name, father, father->id);
 
     if (!S_ISDIR(father->st.st_mode))
     {
@@ -1587,8 +1519,7 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
          * If the mcachefs target mountpoint is mounted via mcachefs, we have to skip the
          * original '.mcachefs' directory in the target mountpoint.
          */
-        if (fatherid == mcachefs_metadata_id_root
-            && (strcmp(de->d_name, ".mcachefs") == 0))
+        if (fatherid == mcachefs_metadata_id_root && (strcmp(de->d_name, ".mcachefs") == 0))
         {
             Info("Skipping target '.mcachefs' !\n");
             continue;
@@ -1604,8 +1535,7 @@ mcachefs_metadata_get_child(struct mcachefs_metadata_t *father)
 
         if (fstatat(fd, newmeta->d_name, &(newmeta->st), AT_SYMLINK_NOFOLLOW))
         {
-            Err("Could not fstatat(%d, %s, %p) : err=%d:%s\n", fd,
-                newmeta->d_name, &(newmeta->st), errno, strerror(errno));
+            Err("Could not fstatat(%d, %s, %p) : err=%d:%s\n", fd, newmeta->d_name, &(newmeta->st), errno, strerror(errno));
         }
         newmeta->st.st_ino = 0;
 
@@ -1672,8 +1602,7 @@ mcachefs_metadata_fetch_children(struct mcachefs_metadata_t *mroot)
 }
 
 struct mcachefs_metadata_t *
-mcachefs_metadata_walk_down(struct mcachefs_metadata_t *father,
-                            const char *path, int path_size)
+mcachefs_metadata_walk_down(struct mcachefs_metadata_t *father, const char *path, int path_size)
 {
     const char *rpath = NULL;
     hash_t father_hash, hash;
@@ -1691,7 +1620,8 @@ mcachefs_metadata_walk_down(struct mcachefs_metadata_t *father,
     father_hash = father->hash;
     hash = 0;
 
-    Log("May walk down : father=(%p:%llu) %s, path=%s (path_size=%d), rpath=%s (rpath_size=%d)\n", father, father->id, father->d_name, path, path_size, rpath, rpath_size);
+    Log("May walk down : father=(%p:%llu) %s, path=%s (path_size=%d), rpath=%s (rpath_size=%d)\n", father, father->id,
+        father->d_name, path, path_size, rpath, rpath_size);
 
     struct mcachefs_metadata_t *child = mcachefs_metadata_get_child(father);
     father = NULL;              // get_child may have garbaged father, do not use it anymore
@@ -1731,7 +1661,7 @@ mcachefs_metadata_find_locked(const char *path)
     hash_t hash = doHash(path);
 
     Log("Finding path '%s'\n", path);
-    if ( strcmp(path, "/") == 0 )
+    if (strcmp(path, "/") == 0)
     {
         return mcachefs_metadata_get(mcachefs_metadata_id_root);
     }
@@ -1764,8 +1694,7 @@ mcachefs_metadata_find_locked(const char *path)
             break;
         path_size--;
     }
-    Log("After semi-lookup : metadata=%p, path_size=%d\n", metadata,
-        path_size);
+    Log("After semi-lookup : metadata=%p, path_size=%d\n", metadata, path_size);
     return mcachefs_metadata_walk_down(metadata, path, path_size);
 }
 
@@ -1839,13 +1768,11 @@ mcachefs_metadata_remove_children(struct mcachefs_metadata_t *metadata)
 
     while (current)
     {
-        Log("At current=%llu (father=%llu, d_name=%s)\n", current->id,
-            current->father, current->d_name);
+        Log("At current=%llu (father=%llu, d_name=%s)\n", current->id, current->father, current->d_name);
 
         if (current->child && current->child != mcachefs_metadata_id_EMPTY)
         {
-            Log("Directory %s has children, and not empty ones.\n",
-                current->d_name);
+            Log("Directory %s has children, and not empty ones.\n", current->d_name);
             current = mcachefs_metadata_do_get(current->child);
             continue;
         }
@@ -1923,10 +1850,10 @@ mcachefs_metadata_getattr(const char *path, struct stat *stbuf)
     Log("Found '%llu' : '%s', (hash=%llx)\n", mdata->id, mdata->d_name, _llu(mdata->hash));
     memcpy(stbuf, &(mdata->st), sizeof(struct stat));
 
-    Log("dev=%ld, ino=%ld, mode=%lo, link=%lx, uid=%ld, gid=%ld, rdev=%ld, size=%lu, blksz=%ld, blkcnt=%ld, at=%ld, mt=%ld, ct=%ld\n", 
-        (long) mdata->st.st_dev, (long) mdata->st.st_ino, (long) mdata->st.st_mode, (long) mdata->st.st_nlink, (long) mdata->st.st_uid, 
-        (long) mdata->st.st_gid, (long) mdata->st.st_rdev, (long) mdata->st.st_size, (long) mdata->st.st_blksize, (long) mdata->st.st_blocks, 
-        mdata->st.st_atime, mdata->st.st_mtime, mdata->st.st_ctime);
+    Log("dev=%ld, ino=%ld, mode=%lo, link=%lx, uid=%ld, gid=%ld, rdev=%ld, size=%lu, blksz=%ld, blkcnt=%ld, at=%ld, mt=%ld, ct=%ld\n", (long) mdata->st.st_dev,
+        (long) mdata->st.st_ino, (long) mdata->st.st_mode, (long) mdata->st.st_nlink, (long) mdata->st.st_uid, (long) mdata->st.st_gid,
+        (long) mdata->st.st_rdev, (long) mdata->st.st_size, (long) mdata->st.st_blksize, (long) mdata->st.st_blocks, mdata->st.st_atime, mdata->st.st_mtime,
+        mdata->st.st_ctime);
     mcachefs_metadata_release(mdata);
 
     if (S_ISDIR(stbuf->st_mode) && stbuf->st_size == 0)
@@ -1958,8 +1885,7 @@ mcachefs_metadata_make_entry(const char *path, mode_t mode, dev_t rdev)
 
     dpath = mcachefs_split_path(path, &lname);
 
-    Log("mcachefs_metadata_make_entry : path='%s', dpath='%s', lname='%s'\n",
-        path, dpath, lname);
+    Log("mcachefs_metadata_make_entry : path='%s', dpath='%s', lname='%s'\n", path, dpath, lname);
 
     father = mcachefs_metadata_find(dpath);
     fatherid = father->id;
@@ -1995,8 +1921,7 @@ mcachefs_metadata_make_entry(const char *path, mode_t mode, dev_t rdev)
      */
 
     Log("In mcachefs_metadata_make_entry : caller=%lu, uid=%lu, gid=%lu\n",
-        (long) fuse_get_context()->pid, (long) fuse_get_context()->uid,
-        (long) fuse_get_context()->gid);
+        (long) fuse_get_context()->pid, (long) fuse_get_context()->uid, (long) fuse_get_context()->gid);
 
     child->st.st_uid = fuse_get_context()->uid;
     child->st.st_gid = fuse_get_context()->gid;
@@ -2023,32 +1948,31 @@ mcachefs_metadata_unlink_list(struct mcachefs_metadata_t *mdata)
 {
     Log("mcachefs_metadata_unlink_list(%llu)\n", mdata->id);
     mcachefs_metadata_check_locked();
-    if ( !mdata->hardlink )
+    if (!mdata->hardlink)
     {
         Bug("At %llu : nlink=%lu but hardlink=%llu !\n", mdata->id, (unsigned long) mdata->st.st_nlink, mdata->hardlink);
     }
-    struct mcachefs_metadata_t* next = mcachefs_metadata_get(mdata->hardlink);
+    struct mcachefs_metadata_t *next = mcachefs_metadata_get(mdata->hardlink);
     int count = 0;
-    while ( 1 )
+    while (1)
     {
         Log("mcachefs_metadata_unlink_list(%llu), at %llu, count=%d\n", mdata->id, next->id, count);
         count++;
-        if ( count >= MCACHEFS_METADATA_MAX_LINK_COUNT )
+        if (count >= MCACHEFS_METADATA_MAX_LINK_COUNT)
         {
             mcachefs_metadata_dump_locked(NULL);
-            Bug("Too mutch iterations while resolving links ! at mdata=%llu, hardlink=%llu\n",
-                mdata->id, mdata->hardlink);
+            Bug("Too mutch iterations while resolving links ! at mdata=%llu, hardlink=%llu\n", mdata->id, mdata->hardlink);
         }
-        next->st.st_nlink --;
-        
-        if ( next->hardlink == 0 )
+        next->st.st_nlink--;
+
+        if (next->hardlink == 0)
         {
             mcachefs_metadata_dump_locked(NULL);
             Bug("Spurious ! at mdata=%llu, next=%llu has no hardlink set !\n", mdata->id, next->id);
         }
-        if ( next->hardlink == mdata->id )
+        if (next->hardlink == mdata->id)
         {
-            if ( mdata->hardlink == next->id )
+            if (mdata->hardlink == next->id)
             {
                 next->hardlink = 0;
             }
@@ -2104,7 +2028,7 @@ mcachefs_metadata_rmdir_unlink(const char *path, int isDir)
             mcachefs_metadata_release(mdata);
             return -ENOSYS;
         }
-        if ( mdata->st.st_nlink > 1 )
+        if (mdata->st.st_nlink > 1)
         {
             Log("Will unlink multiple links from %llu\n", mdata->id);
             mcachefs_metadata_unlink_list(mdata);
@@ -2119,25 +2043,23 @@ mcachefs_metadata_rmdir_unlink(const char *path, int isDir)
     return 0;
 }
 
-void 
+void
 mcachefs_metadata_notify_update(struct mcachefs_metadata_t *mdata)
 {
-    if ( !(S_ISREG(mdata->st.st_mode)) || mdata->st.st_nlink <= 1 )
+    if (!(S_ISREG(mdata->st.st_mode)) || mdata->st.st_nlink <= 1)
     {
         return;
     }
-    Log("Updating mdata=%llu, st_nlink=%lu, hardlink=%llu\n", 
-        mdata->id, (unsigned long) mdata->st.st_nlink, mdata->hardlink);
-    if ( !mdata->hardlink )
+    Log("Updating mdata=%llu, st_nlink=%lu, hardlink=%llu\n", mdata->id, (unsigned long) mdata->st.st_nlink, mdata->hardlink);
+    if (!mdata->hardlink)
     {
-        Bug("Inconsistent hardlink ! mdata=%llu, st_nlink=%lu, hardlink=%llu\n", 
-        mdata->id, (unsigned long) mdata->st.st_nlink, mdata->hardlink);
+        Bug("Inconsistent hardlink ! mdata=%llu, st_nlink=%lu, hardlink=%llu\n", mdata->id, (unsigned long) mdata->st.st_nlink, mdata->hardlink);
     }
     struct mcachefs_metadata_t *next = mcachefs_metadata_get(mdata->hardlink);
-    while ( 1 )
+    while (1)
     {
         next->st = mdata->st;
-        if ( next->hardlink == mdata->id )
+        if (next->hardlink == mdata->id)
         {
             break;
         }
@@ -2155,8 +2077,7 @@ mcachefs_metadata_get_path(struct mcachefs_metadata_t *mdata)
     int level = 0, l;
     int pathsz = 1;
 
-    for (mcurrent = mdata; mcurrent->father; mcurrent =
-         mcachefs_metadata_do_get(mcurrent->father))
+    for (mcurrent = mdata; mcurrent->father; mcurrent = mcachefs_metadata_do_get(mcurrent->father))
     {
         hierarchy[level] = mcurrent;
         level++;
@@ -2164,8 +2085,7 @@ mcachefs_metadata_get_path(struct mcachefs_metadata_t *mdata)
     }
     if (strcmp(mcurrent->d_name, "/"))
     {
-        Bug("Wrong last mcurrent name : '%s' (mcurrent->id=%llu)\n",
-            mcurrent->d_name, mcurrent->id);
+        Bug("Wrong last mcurrent name : '%s' (mcurrent->id=%llu)\n", mcurrent->d_name, mcurrent->id);
     }
     newpath = (char *) malloc(pathsz);
     newpath[0] = 0;
@@ -2268,16 +2188,14 @@ mcachefs_metadata_rename_entry(const char *path, const char *to)
     mcachefs_metadata_build_hash(mtarget, mdata);
     mcachefs_metadata_insert_hash(mdata);
 
-    if (S_ISDIR(mdata->st.st_mode)
-        && mdata->child != mcachefs_metadata_id_EMPTY)
+    if (S_ISDIR(mdata->st.st_mode) && mdata->child != mcachefs_metadata_id_EMPTY)
     {
         mcachefs_metadata_rehash_children(mdata);
     }
 
     if (mdata->fh)
     {
-        Log("!!! rename(%s, %s) on a metadata with an openned fh !!!\n",
-            path, to);
+        Log("!!! rename(%s, %s) on a metadata with an openned fh !!!\n", path, to);
         mcachefs_metadata_update_fh_path(mdata);
     }
 
@@ -2326,9 +2244,7 @@ mcachefs_metadata_find_entry(const char *path)
     }
     else
     {
-        metadata = mcachefs_metadata_find_hash(path,
-                                               doHashPartial(path, path_sz),
-                                               path_sz);
+        metadata = mcachefs_metadata_find_hash(path, doHashPartial(path, path_sz), path_sz);
     }
     if (metadata == NULL)
     {
@@ -2357,8 +2273,7 @@ void
 mcachefs_metadata_vops_remove_previous(struct mcachefs_metadata_t *mdata_root)
 {
     struct mcachefs_metadata_t *mdata_child;
-    for (mdata_child = mcachefs_metadata_get_child(mdata_root);
-         mdata_child != NULL;)
+    for (mdata_child = mcachefs_metadata_get_child(mdata_root); mdata_child != NULL;)
     {
         if (strncmp(mdata_child->d_name, MCACHEFS_VOPS_DIR + 1, NAME_MAX) == 0)
         {
@@ -2377,8 +2292,7 @@ mcachefs_metadata_id
 mcachefs_metadata_vops_create_dir(mcachefs_metadata_id root_id)
 {
     mcachefs_metadata_id vops_meta_id = mcachefs_metadata_allocate();
-    struct mcachefs_metadata_t *vops_meta =
-        mcachefs_metadata_do_get(vops_meta_id);
+    struct mcachefs_metadata_t *vops_meta = mcachefs_metadata_do_get(vops_meta_id);
 
     strncpy(vops_meta->d_name, MCACHEFS_VOPS_DIR + 1, NAME_MAX + 1);
     vops_meta->st.st_mode = S_IFDIR | 0700;
@@ -2391,14 +2305,11 @@ mcachefs_metadata_vops_create_dir(mcachefs_metadata_id root_id)
 }
 
 void
-mcachefs_metadata_vops_create_file(const char *vops_name,
-                                   mcachefs_metadata_id vops_meta_id)
+mcachefs_metadata_vops_create_file(const char *vops_name, mcachefs_metadata_id vops_meta_id)
 {
     mcachefs_metadata_id vops_meta_file_id = mcachefs_metadata_allocate();
-    struct mcachefs_metadata_t *vops_meta_file =
-        mcachefs_metadata_do_get(vops_meta_file_id);
-    Log("d_name at %p, vops_name at %p (%s)\n", vops_meta_file->d_name,
-        vops_name, vops_name);
+    struct mcachefs_metadata_t *vops_meta_file = mcachefs_metadata_do_get(vops_meta_file_id);
+    Log("d_name at %p, vops_name at %p (%s)\n", vops_meta_file->d_name, vops_name, vops_name);
     strncpy(vops_meta_file->d_name, vops_name, NAME_MAX);
     vops_meta_file->st.st_mode = S_IFREG | 0600;
     vops_meta_file->st.st_uid = getuid();
@@ -2431,8 +2342,7 @@ mcachefs_metadata_populate_vops()
 
     mdata_root = NULL;
 
-    mcachefs_metadata_id vops_meta_id =
-        mcachefs_metadata_vops_create_dir(mdata_root_id);
+    mcachefs_metadata_id vops_meta_id = mcachefs_metadata_vops_create_dir(mdata_root_id);
 
     const char **vops_list;
     for (vops_list = mcachefs_vops_get_vops_list(); *vops_list; vops_list++)
@@ -2443,8 +2353,7 @@ mcachefs_metadata_populate_vops()
     Log("Populated VOPS : .mcachefs entry at %llu\n", vops_meta_id);
 
     mdata_root = mcachefs_metadata_do_get(mdata_root_id);
-    Log("Now Root (%llu,%p) has child (%llu)\n", mdata_root->id, mdata_root,
-        mdata_root->child);
+    Log("Now Root (%llu,%p) has child (%llu)\n", mdata_root->id, mdata_root, mdata_root->child);
     mcachefs_metadata_release(mdata_root);
 }
 
@@ -2461,17 +2370,14 @@ mcachefs_metadata_schedule_fill_entry(struct mcachefs_metadata_t *metadata)
 }
 
 void
-mcachefs_metadata_schedule_fill_child_entries(struct mcachefs_metadata_t
-                                              *mdata)
+mcachefs_metadata_schedule_fill_child_entries(struct mcachefs_metadata_t *mdata)
 {
     struct mcachefs_metadata_t *child;
-    for (child = mcachefs_metadata_get_child(mdata); child; child =
-         mcachefs_metadata_do_get(child->next))
+    for (child = mcachefs_metadata_get_child(mdata); child; child = mcachefs_metadata_do_get(child->next))
     {
         if (S_ISDIR(child->st.st_mode))
         {
-            if (mdata->id == mcachefs_metadata_id_root
-                && strcmp(child->d_name, ".mcachefs") == 0)
+            if (mdata->id == mcachefs_metadata_id_root && strcmp(child->d_name, ".mcachefs") == 0)
             {
                 Log("Skipping virtual .mcachefs directory.\n");
             }
@@ -2485,8 +2391,7 @@ mcachefs_metadata_schedule_fill_child_entries(struct mcachefs_metadata_t
 }
 
 struct mcachefs_metadata_t *
-mcachefs_metadata_dir_get_child(struct mcachefs_metadata_t *father,
-                                const char *d_name)
+mcachefs_metadata_dir_get_child(struct mcachefs_metadata_t *father, const char *d_name)
 {
     struct mcachefs_metadata_t *child;
     if (father->child == 0 || father->child == mcachefs_metadata_id_EMPTY)
@@ -2506,16 +2411,13 @@ mcachefs_metadata_dir_get_child(struct mcachefs_metadata_t *father,
 }
 
 void
-mcachefs_metadata_compare_entries(const char *path, const char *d_name,
-                                  struct mcachefs_metadata_t *existingmeta,
-                                  struct stat *newstat)
+mcachefs_metadata_compare_entries(const char *path, const char *d_name, struct mcachefs_metadata_t *existingmeta, struct stat *newstat)
 {
     Log("At '%s' : inserting '%s' : already exists !\n", path, d_name);
     struct stat *oldstat = &(existingmeta->st);
     if ((oldstat->st_mode & S_IFMT) != (newstat->st_mode & S_IFMT))
     {
-        Warn("Update %s/%s : Divering modes ! existing mode=%x, stat=%x",
-             path, d_name, oldstat->st_mode, newstat->st_mode);
+        Warn("Update %s/%s : Divering modes ! existing mode=%x, stat=%x", path, d_name, oldstat->st_mode, newstat->st_mode);
     }
     if (S_ISREG(oldstat->st_mode) && S_ISREG(newstat->st_mode))
     {
@@ -2526,17 +2428,14 @@ mcachefs_metadata_compare_entries(const char *path, const char *d_name,
         }
         if (oldstat->st_size != newstat->st_size)
         {
-            Info("Update %s/%s : Sizes differ (old=%lu, new=%lu)!\n", path,
-                 d_name, (unsigned long) oldstat->st_size,
-                 (unsigned long) newstat->st_size);
+            Info("Update %s/%s : Sizes differ (old=%lu, new=%lu)!\n", path, d_name, (unsigned long) oldstat->st_size, (unsigned long) newstat->st_size);
             // oldstat->st_size = newstat->st_size;
         }
     }
 }
 
 int
-mcachefs_metadata_browse_dir(const char *path, int fd, struct stat **pstats,
-                             char ***pnames)
+mcachefs_metadata_browse_dir(const char *path, int fd, struct stat **pstats, char ***pnames)
 {
     DIR *dp;
     struct dirent *de;
@@ -2547,8 +2446,7 @@ mcachefs_metadata_browse_dir(const char *path, int fd, struct stat **pstats,
 
     if (dp == NULL)
     {
-        Err("Could not fdopendir('%s') : err=%d:%s\n", path, errno,
-            strerror(errno));
+        Err("Could not fdopendir('%s') : err=%d:%s\n", path, errno, strerror(errno));
         close(fd);
         return 0;
     }
@@ -2562,15 +2460,13 @@ mcachefs_metadata_browse_dir(const char *path, int fd, struct stat **pstats,
         if (nb == alloced)
         {
             alloced += 32;
-            *pstats = (struct stat *) realloc(*pstats,
-                                              sizeof(struct stat) * alloced);
+            *pstats = (struct stat *) realloc(*pstats, sizeof(struct stat) * alloced);
             *pnames = (char **) realloc(*pnames, sizeof(char *) * alloced);
         }
         (*pnames)[nb] = strdup(de->d_name);
         if (fstatat(fd, (*pnames)[nb], &((*pstats)[nb]), AT_SYMLINK_NOFOLLOW))
         {
-            Bug("Could not fstatat(%d, %s, %p) : err=%d:%s\n", fd,
-                (*pnames)[nb], &((*pstats)[nb]), errno, strerror(errno));
+            Bug("Could not fstatat(%d, %s, %p) : err=%d:%s\n", fd, (*pnames)[nb], &((*pstats)[nb]), errno, strerror(errno));
         }
         nb++;
     }
@@ -2616,13 +2512,10 @@ mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile)
         Log("At '%s' : inserting '%s'\n", mdata->d_name, names[cur]);
         if (!virgindir)
         {
-            struct mcachefs_metadata_t *existingmeta =
-                mcachefs_metadata_dir_get_child(mdata, names[cur]);
+            struct mcachefs_metadata_t *existingmeta = mcachefs_metadata_dir_get_child(mdata, names[cur]);
             if (existingmeta)
             {
-                mcachefs_metadata_compare_entries(mfile->path, names[cur],
-                                                  existingmeta,
-                                                  &(stats[cur]));
+                mcachefs_metadata_compare_entries(mfile->path, names[cur], existingmeta, &(stats[cur]));
                 continue;
             }
         }
@@ -2716,8 +2609,7 @@ static int mcachefs_dump_mdata_hashtree_max_blackdepth = 0;
 static int mcachefs_dump_mdata_hashtree_min_blackdepth = 0;
 
 void
-mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops,
-                            struct mcachefs_metadata_t *mdata, int depth)
+mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops, struct mcachefs_metadata_t *mdata, int depth)
 {
     mcachefs_dump_mdata_tree_nb++;
     __SET_DSPACE(depth);
@@ -2729,68 +2621,62 @@ mcachefs_metadata_dump_meta(struct mcachefs_file_t *mvops,
                  mdata->right, (unsigned long) mdata->st.st_nlink, mdata->hardlink, (unsigned long) mdata->fh);
 
     if (mdata->child && mdata->child != mcachefs_metadata_id_EMPTY)
-        mcachefs_metadata_dump_meta(mvops,
-                                    mcachefs_metadata_do_get(mdata->child),
-                                    depth + 1);
+        mcachefs_metadata_dump_meta(mvops, mcachefs_metadata_do_get(mdata->child), depth + 1);
 
     if (mdata->next)
-        mcachefs_metadata_dump_meta(mvops,
-                                    mcachefs_metadata_do_get(mdata->next),
-                                    depth);
+        mcachefs_metadata_dump_meta(mvops, mcachefs_metadata_do_get(mdata->next), depth);
 }
 
 void
 mcachefs_metadata_update_blackdepth(struct mcachefs_file_t *mvops, struct mcachefs_metadata_t *mdata, int blackdepth)
 {
-    if ( mcachefs_dump_mdata_hashtree_max_blackdepth < blackdepth )
+    int wasFirst = mcachefs_dump_mdata_hashtree_max_blackdepth == 0;
+    if (mcachefs_dump_mdata_hashtree_max_blackdepth < blackdepth)
     {
         mcachefs_dump_mdata_hashtree_max_blackdepth = blackdepth;
     }
-    if ( mcachefs_dump_mdata_hashtree_min_blackdepth > blackdepth )
+    if (mcachefs_dump_mdata_hashtree_min_blackdepth > blackdepth)
     {
         mcachefs_dump_mdata_hashtree_min_blackdepth = blackdepth;
     }
-    // __VOPS_WRITE(mvops, "* LEAF %llu (%s) depth=%d\n", mdata->id, _COLOR(mdata), blackdepth);
+    if ( !wasFirst && ( mcachefs_dump_mdata_hashtree_max_blackdepth != blackdepth ) )
+    {
+        __VOPS_WRITE(mvops, "==> LEAF %llu (%s) Erroneous blackdepth=%d\n", mdata->id, _COLOR(mdata), blackdepth);
+    }
 }
 
 void
-mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
-                            struct mcachefs_metadata_t *mdata, 
-                            int depth, int blackdepth,
-                            hash_t min, hash_t max)
+mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops, struct mcachefs_metadata_t *mdata, int depth, int blackdepth, hash_t min, hash_t max)
 {
-    if ( depth > 32 )
+    if (depth > 32)
     {
         __VOPS_WRITE(mvops, "==> Depth too high !\n");
         mcachefs_dump_mdata_hashtree_errs++;
         return;
     }
-    
+
     mcachefs_dump_mdata_hashtree_nb++;
     __SET_DSPACE(depth);
-    if ( mcachefs_dump_mdata_hashtree_max_depth < depth )
+    if (mcachefs_dump_mdata_hashtree_max_depth < depth)
     {
         mcachefs_dump_mdata_hashtree_max_depth = depth;
     }
-    if ( !mdata->left && !mdata->right )
+    if (!mdata->left && !mdata->right)
     {
-        if ( mcachefs_dump_mdata_hashtree_min_depth > depth )
+        if (mcachefs_dump_mdata_hashtree_min_depth > depth)
         {
             mcachefs_dump_mdata_hashtree_min_depth = depth;
         }
     }
-    if ( mdata->color == BLACK )
+    if (mdata->color == BLACK)
     {
         blackdepth++;
     }
-    __VOPS_WRITE(mvops,
-                 "%s[%llu] (LR %llu,%llu) %s, up=%llu, hash=%llx : '%s' (D=%d, blackd=%d, R [%llx:%llx]), coll=n:%llu/p:%llu\n",
+    __VOPS_WRITE(mvops, "%s[%llu] (LR %llu,%llu) %s, up=%llu, hash=%llx : '%s' (D=%d, blackd=%d, R [%llx:%llx]), coll=n:%llu/p:%llu\n",
                  dspace, mdata->id, mdata->left, mdata->right, _COLOR(mdata), mdata->up,
-                 _llu(mdata->hash), mdata->d_name, 
-                 depth, blackdepth, _llu(min), _llu(max),
-                 mdata->collision_next, mdata->collision_previous);
+                 _llu(mdata->hash), mdata->d_name, depth, blackdepth, _llu(min), _llu(max), mdata->collision_next, mdata->collision_previous);
     // Count the black-depth of the tree, but ignore collisions
-    if ( (! mdata->collision_next && ! mdata->collision_previous )  && (!mdata->left || !mdata->right ) )
+    if ((!mdata->collision_next && !mdata->collision_previous) && (!mdata->left || !mdata->right))
     {
         mcachefs_metadata_update_blackdepth(mvops, mdata, blackdepth + 1);
     }
@@ -2808,18 +2694,18 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
     int chcount = 0;
     if (mdata->left)
     {
-        struct mcachefs_metadata_t* left = mcachefs_metadata_do_get(mdata->left);
-        if ( left->hash >= mdata->hash )
+        struct mcachefs_metadata_t *left = mcachefs_metadata_do_get(mdata->left);
+        if (left->hash >= mdata->hash)
         {
             __VOPS_WRITE(mvops, "==> Corrupted left hash !\n");
             mcachefs_dump_mdata_hashtree_errs++;
         }
-        if ( left->up != mdata->id )
+        if (left->up != mdata->id)
         {
             __VOPS_WRITE(mvops, "==> Corrupted left->up !\n");
             mcachefs_dump_mdata_hashtree_errs++;
         }
-        if ( mdata->color == RED && left->color != BLACK)
+        if (mdata->color == RED && left->color != BLACK)
         {
             __VOPS_WRITE(mvops, "==> is RED, left should be BLACK !!!\n");
             mcachefs_dump_mdata_hashtree_errs++;
@@ -2829,18 +2715,18 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
     }
     if (mdata->right)
     {
-        struct mcachefs_metadata_t* right = mcachefs_metadata_do_get(mdata->right);
-        if ( right->hash <= mdata->hash )
+        struct mcachefs_metadata_t *right = mcachefs_metadata_do_get(mdata->right);
+        if (right->hash <= mdata->hash)
         {
             __VOPS_WRITE(mvops, "==> Corrupted left hash !\n");
             mcachefs_dump_mdata_hashtree_errs++;
         }
-        if ( right->up != mdata->id )
+        if (right->up != mdata->id)
         {
             __VOPS_WRITE(mvops, "==> Corrupted right->up !\n");
             mcachefs_dump_mdata_hashtree_errs++;
         }
-        if ( mdata->color == RED && right->color != BLACK)
+        if (mdata->color == RED && right->color != BLACK)
         {
             __VOPS_WRITE(mvops, "==> is RED, right should be BLACK !!!\n");
             mcachefs_dump_mdata_hashtree_errs++;
@@ -2851,10 +2737,7 @@ mcachefs_metadata_dump_hash(struct mcachefs_file_t *mvops,
     mcachefs_dump_mdata_hashtree_chcount[chcount]++;
     if (mdata->collision_next)
     {
-        mcachefs_metadata_dump_hash(mvops,
-                                    mcachefs_metadata_do_get
-                                    (mdata->collision_next), depth, blackdepth,
-                                    mdata->hash - 1, mdata->hash + 1);
+        mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_do_get(mdata->collision_next), depth, blackdepth, mdata->hash - 1, mdata->hash + 1);
         mcachefs_dump_mdata_hashtree_collision++;
     }
 }
@@ -2871,44 +2754,41 @@ mcachefs_metadata_dump_locked(struct mcachefs_file_t *mvops)
     mcachefs_dump_mdata_hashtree_max_depth = 0;
     mcachefs_dump_mdata_hashtree_min_blackdepth = 1 << 30;
     mcachefs_dump_mdata_hashtree_max_blackdepth = 0;
-    
+
     mcachefs_dump_mdata_hashtree_chcount[0] = 0;
     mcachefs_dump_mdata_hashtree_chcount[1] = 0;
     mcachefs_dump_mdata_hashtree_chcount[2] = 0;
 
     __VOPS_WRITE(mvops, "---------- Dumping Metadata ----------\n");
-    __VOPS_WRITE(mvops, "--------------- Metadata tree root=%s -----------------\n",
-                 mcachefs_metadata_get_root()->d_name);
+    __VOPS_WRITE(mvops, "--------------- Metadata tree root=%s -----------------\n", mcachefs_metadata_get_root()->d_name);
     mcachefs_metadata_dump_meta(mvops, mcachefs_metadata_get_root(), 0);
 
     __VOPS_WRITE(mvops, "--------------- Metadata hash tree hash_root=%llu, root=%s -----------------\n",
                  mcachefs_metadata_head->hash_root, mcachefs_metadata_get_root()->d_name);
-    mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_get_hash_root(), 
-        0, 0, 0, ~((hash_t) 0));
-    __VOPS_WRITE(mvops, "---- Final count=%lu, depth min=%d,max=%d, blackdepth min=%d,max=%d, nb children(0=%lu, 1=%lu, 2=%lu), collisions=%lu\n", 
-        mcachefs_dump_mdata_hashtree_nb, mcachefs_dump_mdata_hashtree_min_depth, mcachefs_dump_mdata_hashtree_max_depth,
-        mcachefs_dump_mdata_hashtree_min_blackdepth, mcachefs_dump_mdata_hashtree_max_blackdepth,
-        mcachefs_dump_mdata_hashtree_chcount[0], mcachefs_dump_mdata_hashtree_chcount[1], mcachefs_dump_mdata_hashtree_chcount[2],
-        mcachefs_dump_mdata_hashtree_collision);
+    mcachefs_metadata_dump_hash(mvops, mcachefs_metadata_get_hash_root(), 0, 0, 0, ~((hash_t) 0));
+    __VOPS_WRITE(mvops, "---- Final count=%lu, depth min=%d,max=%d, blackdepth min=%d,max=%d, nb children(0=%lu, 1=%lu, 2=%lu), collisions=%lu\n",
+                 mcachefs_dump_mdata_hashtree_nb, mcachefs_dump_mdata_hashtree_min_depth, mcachefs_dump_mdata_hashtree_max_depth,
+                 mcachefs_dump_mdata_hashtree_min_blackdepth, mcachefs_dump_mdata_hashtree_max_blackdepth, mcachefs_dump_mdata_hashtree_chcount[0],
+                 mcachefs_dump_mdata_hashtree_chcount[1], mcachefs_dump_mdata_hashtree_chcount[2], mcachefs_dump_mdata_hashtree_collision);
     if (mcachefs_dump_mdata_tree_nb != mcachefs_dump_mdata_hashtree_nb)
     {
         // mcachefs_dump_mdata_hashtree_errs++;
-        Err("Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_tree_nb=%lu\n", mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
+        Err("Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_tree_nb=%lu\n",
+            mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
         __VOPS_WRITE(mvops, "Diverging counts : mcachefs_dump_mdata_tree_nb=%lu, mcachefs_dump_mdata_hashtree_nb=%lu\n",
-                     mcachefs_dump_mdata_tree_nb,
-                     mcachefs_dump_mdata_hashtree_nb);
+                     mcachefs_dump_mdata_tree_nb, mcachefs_dump_mdata_hashtree_nb);
     }
-    if ( mcachefs_dump_mdata_hashtree_min_blackdepth != mcachefs_dump_mdata_hashtree_max_blackdepth )
+    if (mcachefs_dump_mdata_hashtree_min_blackdepth != mcachefs_dump_mdata_hashtree_max_blackdepth)
     {
         mcachefs_dump_mdata_hashtree_errs++;
         __VOPS_WRITE(mvops, "Invalid blackdepth distance ! min=%d, max=%d\n",
-            mcachefs_dump_mdata_hashtree_min_blackdepth, mcachefs_dump_mdata_hashtree_max_blackdepth);
+                     mcachefs_dump_mdata_hashtree_min_blackdepth, mcachefs_dump_mdata_hashtree_max_blackdepth);
     }
 
-    if ( mcachefs_dump_mdata_hashtree_errs )
+    if (mcachefs_dump_mdata_hashtree_errs)
     {
         __VOPS_WRITE(mvops, "---- FOUND %d ERRORS !\n", mcachefs_dump_mdata_hashtree_errs);
-        if ( mvops == NULL )
+        if (mvops == NULL)
         {
             Bug("metadata hash tree has errors !\n");
         }
@@ -2944,7 +2824,6 @@ mcachefs_metadata_sync()
         return;
     }
     mcachefs_metadata_unlock();
-    Log("Metadata synced (size=%lu)\n",
-        (unsigned long) mcachefs_metadata_size);
+    Log("Metadata synced (size=%lu)\n", (unsigned long) mcachefs_metadata_size);
 }
 #endif // __MCACHEFS_METADATA_HAS_SYNC

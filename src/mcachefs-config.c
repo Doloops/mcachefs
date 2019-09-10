@@ -14,8 +14,7 @@ int check_dir_exists(const char *cpath);
 void check_file_dir_exists(const char *cpath);
 
 static int
-mcachefs_arg_proc(void *data, const char *arg, int key,
-                  struct fuse_args *outargs)
+mcachefs_arg_proc(void *data, const char *arg, int key, struct fuse_args *outargs)
 {
     (void) outargs;
     Log("arg data=%p, arg=%s, key=%d, outargs=%p\n", data, arg, key, outargs);
@@ -48,15 +47,20 @@ static struct fuse_opt mcachefs_opts[] = {
     {"metafile=%s", offsetof(struct mcachefs_config, metafile), 0},
     {"journal=%s", offsetof(struct mcachefs_config, journal), 0},
     {"verbose=%lu", offsetof(struct mcachefs_config, verbose), 0},
-    {"backup-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]), 0},
-    {"write-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK]), 0},
-    {"metadata-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]), 0},
+    {"backup-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]),
+     0},
+    {"write-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK]),
+     0},
+    {"metadata-threads=%lu",
+     offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]), 0},
     {"pre-mount-cmd=%s", offsetof(struct mcachefs_config, pre_mount_cmd), 0},
     {"post-umount-cmd=%s", offsetof(struct mcachefs_config, post_umount_cmd), 0},
     FUSE_OPT_END
 };
 
-static void print_usage(const char* program_name) {
+static void
+print_usage(const char *program_name)
+{
     Info("\n");
     Info("Basic usage : %s {source mountpoint} {target mountpoint}\n", program_name);
     Info("\twhere {source mountpoint} is the backend mount point to cache\n");
@@ -79,7 +83,7 @@ static void print_usage(const char* program_name) {
 struct mcachefs_config *
 mcachefs_parse_config(int argc, char *argv[])
 {
-    const char* program_name = argv[0];
+    const char *program_name = argv[0];
     if (argc < 3)
     {
         Err("Invalid number of arguments !\n");
@@ -87,8 +91,7 @@ mcachefs_parse_config(int argc, char *argv[])
         return NULL;
     }
 
-    struct mcachefs_config *config =
-        (struct mcachefs_config *) malloc(sizeof(struct mcachefs_config));
+    struct mcachefs_config *config = (struct mcachefs_config *) malloc(sizeof(struct mcachefs_config));
     memset(config, 0, sizeof(struct mcachefs_config));
 
     Log("config at %p\n", config);
@@ -169,22 +172,19 @@ set_default_config(struct mcachefs_config *config)
     if (config->cache == NULL)
     {
         config->cache = (char *) malloc(PATH_MAX);
-        snprintf(config->cache, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX,
-                 normalized_mp, "cache");
+        snprintf(config->cache, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "cache");
     }
 
     if (config->metafile == NULL)
     {
         config->metafile = (char *) malloc(PATH_MAX);
-        snprintf(config->metafile, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX,
-                 normalized_mp, "metafile");
+        snprintf(config->metafile, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "metafile");
     }
 
     if (config->journal == NULL)
     {
         config->journal = (char *) malloc(PATH_MAX);
-        snprintf(config->journal, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX,
-                 normalized_mp, "journal");
+        snprintf(config->journal, PATH_MAX, "%s/%s/%s", DEFAULT_PREFIX, normalized_mp, "journal");
     }
 }
 
@@ -200,9 +200,9 @@ mcachefs_dump_config(struct mcachefs_config *config)
     Info("* Backup Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]);
     Info("* Write Back Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK]);
     Info("* Metadata Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]);
-    if ( config->pre_mount_cmd != NULL )
-        Info("* Pre Mount Command %s\n", config->pre_mount_cmd );
-    if ( config->post_umount_cmd != NULL )
+    if (config->pre_mount_cmd != NULL)
+        Info("* Pre Mount Command %s\n", config->pre_mount_cmd);
+    if (config->post_umount_cmd != NULL)
         Info("* Post UMount Command %s\n", config->post_umount_cmd);
 
     int argc;
@@ -224,8 +224,8 @@ mcachefs_set_current_config(struct mcachefs_config *config)
     int threadtype;
     for (threadtype = 0; threadtype < MCACHEFS_TRANSFER_TYPES; threadtype++)
     {
-        if ( ! config->transfer_threads_type_nb[threadtype] )
-          config->transfer_threads_type_nb[threadtype] = 1;
+        if (!config->transfer_threads_type_nb[threadtype])
+            config->transfer_threads_type_nb[threadtype] = 1;
     }
 
     current_config = config;
@@ -440,22 +440,25 @@ mcachefs_config_set_cache_prefix(const char *prefix)
     trim_last_separator(current_config->cache_prefix);
 }
 
-int mcachefs_config_run_cmd(const char *cmd)
+int
+mcachefs_config_run_cmd(const char *cmd)
 {
     if (cmd != NULL)
     {
         Log("Calling command %s\n", cmd);
-        return system( cmd );
+        return system(cmd);
     }
-  return 0;
+    return 0;
 }
 
-int mcachefs_config_run_pre_mount_cmd()
+int
+mcachefs_config_run_pre_mount_cmd()
 {
-  return mcachefs_config_run_cmd(current_config->pre_mount_cmd);
+    return mcachefs_config_run_cmd(current_config->pre_mount_cmd);
 }
 
-int mcachefs_config_run_post_umount_cmd()
+int
+mcachefs_config_run_post_umount_cmd()
 {
-  return mcachefs_config_run_cmd(current_config->post_umount_cmd);
+    return mcachefs_config_run_cmd(current_config->post_umount_cmd);
 }

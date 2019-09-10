@@ -28,8 +28,7 @@ mcachefs_file_source_init(struct mcachefs_file_source_t *source)
 }
 
 void
-mcachefs_file_init(mcachefs_fh_t fh, char *path, hash_t hash,
-                   mcachefs_file_type_t type)
+mcachefs_file_init(mcachefs_fh_t fh, char *path, hash_t hash, mcachefs_file_type_t type)
 {
     struct mcachefs_file_t *mfile = mcachefs_file_get(fh);
 
@@ -43,8 +42,7 @@ mcachefs_file_init(mcachefs_fh_t fh, char *path, hash_t hash,
 
     mfile->use = 1;
 
-    mcachefs_file_source_init(&
-                              (mfile->sources[MCACHEFS_FILE_SOURCE_BACKING]));
+    mcachefs_file_source_init(&(mfile->sources[MCACHEFS_FILE_SOURCE_BACKING]));
     mcachefs_file_source_init(&(mfile->sources[MCACHEFS_FILE_SOURCE_REAL]));
 
     mfile->cache_status = MCACHEFS_FILE_BACKING_NONE;
@@ -60,8 +58,7 @@ mcachefs_file_init(mcachefs_fh_t fh, char *path, hash_t hash,
 struct mcachefs_file_t *
 mcachefs_file_get(mcachefs_fh_t fdi)
 {
-    struct mcachefs_file_t *mfile =
-        (struct mcachefs_file_t *) (unsigned long) fdi;
+    struct mcachefs_file_t *mfile = (struct mcachefs_file_t *) (unsigned long) fdi;
     return mfile;
 }
 
@@ -73,8 +70,7 @@ mcachefs_file_add()
 
     if ((mfile = mcachefs_file_timeslice_get_freed()) == NULL)
     {
-        mfile =
-            (struct mcachefs_file_t *) malloc(sizeof(struct mcachefs_file_t));
+        mfile = (struct mcachefs_file_t *) malloc(sizeof(struct mcachefs_file_t));
     }
     if (mfile == NULL)
     {
@@ -86,8 +82,7 @@ mcachefs_file_add()
 }
 
 mcachefs_fh_t
-mcachefs_fileid_get(struct mcachefs_metadata_t * mdata, const char *path,
-                    mcachefs_file_type_t type)
+mcachefs_fileid_get(struct mcachefs_metadata_t *mdata, const char *path, mcachefs_file_type_t type)
 {
     struct mcachefs_file_t *mfile;
     char *mypath;
@@ -101,13 +96,11 @@ mcachefs_fileid_get(struct mcachefs_metadata_t * mdata, const char *path,
         mfile = mcachefs_file_get(mdata->fh);
         if (mfile->metadata_id != mdata->id)
         {
-            Bug("Inconsistent mdata id for path=%s ! mfile has %llu, mdata has %llu\n",
-                path, mfile->metadata_id, mdata->id);
+            Bug("Inconsistent mdata id for path=%s ! mfile has %llu, mdata has %llu\n", path, mfile->metadata_id, mdata->id);
         }
         if (mfile->type != type)
         {
-            Bug("Inconsistent type for path=%s ! mfile has %d, but provided %d\n",
-                path, mfile->type, type);
+            Bug("Inconsistent type for path=%s ! mfile has %d, but provided %d\n", path, mfile->type, type);
         }
         mcachefs_file_lock_file(mfile);
         mfile->use++;
@@ -152,14 +145,10 @@ mcachefs_file_cleanup_file(struct mcachefs_file_t *mfile)
         return;
     mcachefs_file_lock_file(mfile);
 
-    mcachefs_file_cleanup_file_source(&
-                                      (mfile->sources
-                                       [MCACHEFS_FILE_SOURCE_REAL]));
+    mcachefs_file_cleanup_file_source(&(mfile->sources[MCACHEFS_FILE_SOURCE_REAL]));
 
     if (mfile->cache_status == MCACHEFS_FILE_BACKING_DONE)
-        mcachefs_file_cleanup_file_source(&
-                                          (mfile->sources
-                                           [MCACHEFS_FILE_SOURCE_BACKING]));
+        mcachefs_file_cleanup_file_source(&(mfile->sources[MCACHEFS_FILE_SOURCE_BACKING]));
 
     mcachefs_file_unlock_file(mfile);
 }
@@ -213,8 +202,7 @@ mcachefs_file_release(struct mcachefs_file_t *mfile)
         mfile->use--;
     }
 
-    Log("USECNT mcachefs_file_release %p '%s' : use=%d\n", mfile,
-        mfile->path, mfile->use);
+    Log("USECNT mcachefs_file_release %p '%s' : use=%d\n", mfile, mfile->path, mfile->use);
 
     if (mfile->use == 0)
     {
@@ -254,9 +242,7 @@ mcachefs_fileid_put(mcachefs_fh_t fdi)
  * returns 1 if we can reuse, 0 otherwise
  */
 int
-mcachefs_file_may_reuse_source(struct mcachefs_file_t *mfile,
-                               struct mcachefs_file_source_t *source,
-                               int asked_wr)
+mcachefs_file_may_reuse_source(struct mcachefs_file_t *mfile, struct mcachefs_file_source_t *source, int asked_wr)
 {
     if (source->fd != -1)
     {
@@ -267,21 +253,18 @@ mcachefs_file_may_reuse_source(struct mcachefs_file_t *mfile,
            */
             source->use++;
             // mcachefs_file_unlock_file ( mfile );
-            Log("File '%s' : already openned with wr=%d (asked_wr=%d)\n",
-                mfile->path, source->wr, asked_wr);
+            Log("File '%s' : already openned with wr=%d (asked_wr=%d)\n", mfile->path, source->wr, asked_wr);
             return 1;           // source->fd;
         }
         /*
          * We now that asked_wr > *wr, that is asked_wr==1 and *wr==0
          */
-        Log("File '%s' : shall re-open it O_WRONLY, closing it first !\n",
-            mfile->path);
+        Log("File '%s' : shall re-open it O_WRONLY, closing it first !\n", mfile->path);
         while (source->use)
         {
             mcachefs_file_unlock_file(mfile);
             sleep(1);
-            Info("File '%s' : waiting for release to re-open O_WRONLY... \n",
-                 mfile->path);
+            Info("File '%s' : waiting for release to re-open O_WRONLY... \n", mfile->path);
             mcachefs_file_lock_file(mfile);
         }
         Log("File '%s' : use is zero, closing %d\n", mfile->path, source->fd);
@@ -292,9 +275,7 @@ mcachefs_file_may_reuse_source(struct mcachefs_file_t *mfile,
 }
 
 int
-mcachefs_file_do_open(struct mcachefs_file_t *mfile, int flags, mode_t mode,
-                      struct mcachefs_file_source_t *source,
-                      char *(*path_translator) (const char *path))
+mcachefs_file_do_open(struct mcachefs_file_t *mfile, int flags, mode_t mode, struct mcachefs_file_source_t *source, char *(*path_translator)(const char *path))
 {
     char *translated_path;
     int asked_wr = __IS_WRITE(flags) ? 1 : 0;
@@ -321,15 +302,15 @@ mcachefs_file_do_open(struct mcachefs_file_t *mfile, int flags, mode_t mode,
     if (flags & O_NONBLOCK)
         Info("Opening '%s' with O_NONBLOCK flag !\n", translated_path);
 
-    Log("Preparing to open with translated_path='%s', flags=%x, mode=%x\n",
-        translated_path, flags, mode);
+    Log("Preparing to open with translated_path='%s', flags=%x, mode=%x\n", translated_path, flags, mode);
 
     if (flags & O_CREAT)
         source->fd = open(translated_path, flags, mode);
     else
         source->fd = open(translated_path, flags);
 
-    Log("OPEN path='%s', translated_path='%s' => fd=%d, flags=%lo, mode=%lo, use=%d, wr=%d, asked=%d\n", mfile->path, translated_path, source->fd, (long) flags, (long) mode, source->use, source->wr, asked_wr);
+    Log("OPEN path='%s', translated_path='%s' => fd=%d, flags=%lo, mode=%lo, use=%d, wr=%d, asked=%d\n", mfile->path,
+        translated_path, source->fd, (long) flags, (long) mode, source->use, source->wr, asked_wr);
 
     if (source->fd == -1)
     {
@@ -349,13 +330,11 @@ mcachefs_file_do_open(struct mcachefs_file_t *mfile, int flags, mode_t mode,
 }
 
 int
-mcachefs_file_getfd_mode(struct mcachefs_file_t *mfile, int real, int flags,
-                         mode_t mode)
+mcachefs_file_getfd_mode(struct mcachefs_file_t *mfile, int real, int flags, mode_t mode)
 {
     int fd;
 
-    Log("Getting fd '%s', real=%d, flags=%x, mode=%x\n", mfile->path, real,
-        flags, mode);
+    Log("Getting fd '%s', real=%d, flags=%x, mode=%x\n", mfile->path, real, flags, mode);
     if (real)
     {
         if (mcachefs_config_get_read_state() == MCACHEFS_STATE_HANDSUP)
@@ -363,10 +342,7 @@ mcachefs_file_getfd_mode(struct mcachefs_file_t *mfile, int real, int flags,
             Bug("While opening real file for '%s' : mcachefs state set to HANDSUP.\n", mfile->path);
             return -EIO;
         }
-        fd = mcachefs_file_do_open(mfile, flags, mode,
-                                   &(mfile->sources
-                                     [MCACHEFS_FILE_SOURCE_REAL]),
-                                   &mcachefs_makepath_source);
+        fd = mcachefs_file_do_open(mfile, flags, mode, &(mfile->sources[MCACHEFS_FILE_SOURCE_REAL]), &mcachefs_makepath_source);
         if (fd < 0)
         {
           /**
@@ -374,21 +350,16 @@ mcachefs_file_getfd_mode(struct mcachefs_file_t *mfile, int real, int flags,
            * - The file we are trying to open is already renamed in the metafile,
            * - But the journal has not been applied, so the file in the target may not have been renamed
            */
-            Err("Could not open REAL file '%s', checking journal...\n",
-                mfile->path);
+            Err("Could not open REAL file '%s', checking journal...\n", mfile->path);
             if (mcachefs_journal_was_renamed(mfile->path))
             {
 #if 1
-                Err("File %s was renamed, must apply journal first !\n",
-                    mfile->path);
+                Err("File %s was renamed, must apply journal first !\n", mfile->path);
                 return -EIO;
 #endif
                 Info("File '%s' was renamed, applying journal to find the real file...\n", mfile->path);
                 mcachefs_journal_apply();
-                fd = mcachefs_file_do_open(mfile, flags, mode,
-                                           &(mfile->sources
-                                             [MCACHEFS_FILE_SOURCE_REAL]),
-                                           &mcachefs_makepath_source);
+                fd = mcachefs_file_do_open(mfile, flags, mode, &(mfile->sources[MCACHEFS_FILE_SOURCE_REAL]), &mcachefs_makepath_source);
             }
             else
             {
@@ -398,22 +369,17 @@ mcachefs_file_getfd_mode(struct mcachefs_file_t *mfile, int real, int flags,
     }
     else
     {
-        if (mode == O_RDONLY
-            && mfile->cache_status == MCACHEFS_FILE_BACKING_NONE)
+        if (mode == O_RDONLY && mfile->cache_status == MCACHEFS_FILE_BACKING_NONE)
         {
             Err("Asking for backing while backing not done !\n");
             return -EIO;
         }
-        if ((mode & O_CREAT)
-            && mfile->sources[MCACHEFS_FILE_SOURCE_BACKING].fd != -1)
+        if ((mode & O_CREAT) && mfile->sources[MCACHEFS_FILE_SOURCE_BACKING].fd != -1)
         {
             Err("Backing : asking non-rdonly, but mfile already exists !\n");
             return -EIO;
         }
-        fd = mcachefs_file_do_open(mfile, flags, mode,
-                                   &(mfile->sources
-                                     [MCACHEFS_FILE_SOURCE_BACKING]),
-                                   &mcachefs_makepath_cache);
+        fd = mcachefs_file_do_open(mfile, flags, mode, &(mfile->sources[MCACHEFS_FILE_SOURCE_BACKING]), &mcachefs_makepath_cache);
     }
     return fd;
 }
@@ -430,8 +396,7 @@ mcachefs_file_getfd(struct mcachefs_file_t *mfile, int real, int flags)
 }
 
 void
-mcachefs_file_source_putfd(struct mcachefs_file_t *mfile,
-                           struct mcachefs_file_source_t *source)
+mcachefs_file_source_putfd(struct mcachefs_file_t *mfile, struct mcachefs_file_source_t *source)
 {
     mcachefs_file_lock_file(mfile);
 
@@ -463,10 +428,10 @@ mcachefs_file_get_metadata(struct mcachefs_file_t *mfile)
     if (mfile->metadata_id == 0)
     {
         Warn("For file '%s' : could not get metadata !\n", mfile->path);
-        if ( mfile->path != NULL )
+        if (mfile->path != NULL)
         {
             mdata = mcachefs_metadata_find(mfile->path);
-            if ( mdata != NULL )
+            if (mdata != NULL)
             {
                 Warn("mfile '%s' : found new metadata at %llu\n", mfile->path, mdata->id);
                 mfile->metadata_id = mdata->id;
@@ -486,8 +451,7 @@ mcachefs_file_get_metadata(struct mcachefs_file_t *mfile)
 }
 
 void
-mcachefs_file_update_metadata(struct mcachefs_file_t *mfile, off_t size,
-                              int modified)
+mcachefs_file_update_metadata(struct mcachefs_file_t *mfile, off_t size, int modified)
 {
     time_t now = time(NULL);
     struct mcachefs_metadata_t *mdata;
@@ -495,8 +459,7 @@ mcachefs_file_update_metadata(struct mcachefs_file_t *mfile, off_t size,
 
     if (!mdata)
     {
-        Err("Could not extend size of '%s', no metadata found !\n",
-            mfile->path);
+        Err("Could not extend size of '%s', no metadata found !\n", mfile->path);
         return;
     }
 
@@ -519,8 +482,7 @@ mcachefs_file_thread(void *arg)
     {
         if (mcachefs_config_get_read_state() == MCACHEFS_STATE_QUITTING)
         {
-            Log("Interrupting file thread %lx\n",
-                (unsigned long) pthread_self());
+            Log("Interrupting file thread %lx\n", (unsigned long) pthread_self());
             return NULL;
         }
         time(&__mcachefs_jiffy_sec);
@@ -549,8 +511,7 @@ mcachefs_file_start_thread()
     pthread_attr_t attrs;
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-    pthread_create(&mcachefs_file_threadid, &attrs, mcachefs_file_thread,
-                   NULL);
+    pthread_create(&mcachefs_file_threadid, &attrs, mcachefs_file_thread, NULL);
 }
 
 void
@@ -560,8 +521,7 @@ mcachefs_file_stop_thread()
     void *arg;
     if ((res = pthread_join(mcachefs_file_threadid, &arg)) != 0)
     {
-        Err("Could not join file thread %lx : err=%d:%s\n",
-            mcachefs_file_threadid, res, strerror(res));
+        Err("Could not join file thread %lx : err=%d:%s\n", mcachefs_file_threadid, res, strerror(res));
     }
     Info("File thread interrupted.\n");
 }

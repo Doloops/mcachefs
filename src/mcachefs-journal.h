@@ -57,9 +57,7 @@ void mcachefs_journal_init();
  * Append an entry in the update journal
  */
 void mcachefs_journal_append(mcachefs_journal_op op, const char *path,
-                             const char *to, mode_t mode, dev_t rdev,
-                             uid_t uid, gid_t gid, off_t size,
-                             struct utimbuf *utimbuf);
+                             const char *to, mode_t mode, dev_t rdev, uid_t uid, gid_t gid, off_t size, struct utimbuf *utimbuf);
 
 /**
  * Check if a new path was renamed in the journal, ie the provided path is a target in the path rename
@@ -93,4 +91,3 @@ int mcachefs_journal_count_entries();
 void mcachefs_journal_dump(struct mcachefs_file_t *mvops);
 
 #endif /* MCACHEFSJOURNAL_H_ */
-

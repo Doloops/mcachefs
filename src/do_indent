@@ -1,1 +1,3 @@
-indent -i4 -bli0 -nut -npcs *.c *.h
+#!/bin/bash
+
+indent -i4 -bli0 -l160 -lc160 -as -nut -npcs *.c *.h

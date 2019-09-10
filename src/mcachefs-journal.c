@@ -8,8 +8,7 @@
 #define Log Info
 #endif
 
-static const char *mcachefs_journal_op_label[] =
-    { "none", "mknod", "mkdir", "unlink", "rmdir", "symlink", "rename",
+static const char *mcachefs_journal_op_label[] = { "none", "mknod", "mkdir", "unlink", "rmdir", "symlink", "rename",
     "link",
     "chmod", "chown", "truncate", "utime", "fsync", "INVALID"
 };
@@ -36,9 +35,7 @@ void
 mcachefs_journal_init()
 {
     struct stat st;
-    mcachefs_journal_fsync_path = mcachefs_makepath(".fsync",
-                                                    mcachefs_config_get_journal
-                                                    ());
+    mcachefs_journal_fsync_path = mcachefs_makepath(".fsync", mcachefs_config_get_journal());
 
     if (mcachefs_journal_fsync_path == NULL)
         Bug("OOM.\n");
@@ -50,16 +47,14 @@ mcachefs_journal_init()
     }
 }
 
-enum mcachefs_journal_action_t mcachefs_journal_action =
-    mcachefs_journal_action_none;
+enum mcachefs_journal_action_t mcachefs_journal_action = mcachefs_journal_action_none;
 
 /**
  * MCachefs Journal operations
  */
 
 int
-mcachefs_journal_append_entry(int fd, struct mcachefs_journal_entry_t *entry,
-                              const char *path, const char *to)
+mcachefs_journal_append_entry(int fd, struct mcachefs_journal_entry_t *entry, const char *path, const char *to)
 {
     int res;
 
@@ -72,15 +67,13 @@ mcachefs_journal_append_entry(int fd, struct mcachefs_journal_entry_t *entry,
     res = write(fd, entry, sizeof(struct mcachefs_journal_entry_t));
     if (res != (int) sizeof(struct mcachefs_journal_entry_t))
     {
-        Err("Could not write to journal : err=%d:%s\n", errno,
-            strerror(errno));
+        Err("Could not write to journal : err=%d:%s\n", errno, strerror(errno));
         return -EIO;
     }
     res = write(fd, path, entry->path_sz);
     if (res != (int) entry->path_sz)
     {
-        Err("Could not write to journal : err=%d:%s\n", errno,
-            strerror(errno));
+        Err("Could not write to journal : err=%d:%s\n", errno, strerror(errno));
         return -EIO;
     }
     if (entry->to_sz)
@@ -88,8 +81,7 @@ mcachefs_journal_append_entry(int fd, struct mcachefs_journal_entry_t *entry,
         res = write(fd, to, entry->to_sz);
         if (res != (int) entry->to_sz)
         {
-            Err("Could not write to journal : err=%d:%s\n", errno,
-                strerror(errno));
+            Err("Could not write to journal : err=%d:%s\n", errno, strerror(errno));
             return -EIO;
         }
     }
@@ -97,8 +89,7 @@ mcachefs_journal_append_entry(int fd, struct mcachefs_journal_entry_t *entry,
 }
 
 int
-mcachefs_journal_read_entry(int fd, struct mcachefs_journal_entry_t *entry,
-                            char *path, char *to)
+mcachefs_journal_read_entry(int fd, struct mcachefs_journal_entry_t *entry, char *path, char *to)
 {
     int bytes = 0, res;
     Log("\tReading...\n");
@@ -111,16 +102,14 @@ mcachefs_journal_read_entry(int fd, struct mcachefs_journal_entry_t *entry,
 
     if (res != (int) sizeof(struct mcachefs_journal_entry_t))
     {
-        Err("Could not read journal entry : err=%d:%s\n", errno,
-            strerror(errno));
+        Err("Could not read journal entry : err=%d:%s\n", errno, strerror(errno));
         return -errno;
     }
     bytes += res;
     res = read(fd, path, entry->path_sz);
     if (res != entry->path_sz)
     {
-        Err("Could not read journal entry : err=%d:%s\n", errno,
-            strerror(errno));
+        Err("Could not read journal entry : err=%d:%s\n", errno, strerror(errno));
         return -errno;
     }
     bytes += res;
@@ -130,8 +119,7 @@ mcachefs_journal_read_entry(int fd, struct mcachefs_journal_entry_t *entry,
         res = read(fd, to, entry->to_sz);
         if (res != entry->to_sz)
         {
-            Err("Could not read journal entry : err=%d:%s\n", errno,
-                strerror(errno));
+            Err("Could not read journal entry : err=%d:%s\n", errno, strerror(errno));
             return -errno;
         }
         bytes += res;
@@ -144,8 +132,7 @@ int mcachefs_journal_rebuild(const char *path, const char *to);
 
 void
 mcachefs_journal_append(mcachefs_journal_op op, const char *path,
-                        const char *to, mode_t mode, dev_t rdev, uid_t uid,
-                        gid_t gid, off_t size, struct utimbuf *utimbuf)
+                        const char *to, mode_t mode, dev_t rdev, uid_t uid, gid_t gid, off_t size, struct utimbuf *utimbuf)
 {
     int fd = 0, res;
     struct stat journal_stat;
@@ -165,8 +152,7 @@ mcachefs_journal_append(mcachefs_journal_op op, const char *path,
     Log("New journal entry : op=%x : path='%s', to='%s' : "
         "mode=%lo, dev=%ld, uid=%ld, gid=%ld, size=%lu, utimebuf=%lu,%lu\n",
         entry.op, path, to, (long) entry.mode, (long) entry.rdev,
-        (long) entry.uid, (long) entry.gid, (unsigned long) entry.size,
-        entry.utimbuf.actime, entry.utimbuf.modtime);
+        (long) entry.uid, (long) entry.gid, (unsigned long) entry.size, entry.utimbuf.actime, entry.utimbuf.modtime);
 
     mcachefs_journal_lock();
 
@@ -187,13 +173,11 @@ mcachefs_journal_append(mcachefs_journal_op op, const char *path,
         }
     }
 
-    fd = open(mcachefs_config_get_journal(), O_RDWR | O_CREAT | O_APPEND,
-              0644);
+    fd = open(mcachefs_config_get_journal(), O_RDWR | O_CREAT | O_APPEND, 0644);
 
     if (fd == -1)
     {
-        Err("Could not open journal '%s' : err=%d:%s\n",
-            mcachefs_config_get_journal(), errno, strerror(errno));
+        Err("Could not open journal '%s' : err=%d:%s\n", mcachefs_config_get_journal(), errno, strerror(errno));
         exit(-1);
     }
 
@@ -232,14 +216,11 @@ mcachefs_journal_rebuild(const char *rename_path, const char *rename_to)
     fd_src = open(mcachefs_config_get_journal(), O_RDONLY);
     if (fd_src == -1)
     {
-        Err("REBUILD : Could not open source journal '%s'\n",
-            mcachefs_config_get_journal());
+        Err("REBUILD : Could not open source journal '%s'\n", mcachefs_config_get_journal());
         return -errno;
     }
 
-    journal_tgt =
-        (char *) malloc(strlen(mcachefs_config_get_journal()) +
-                        strlen(mcachefs_journal_suffix) + 1);
+    journal_tgt = (char *) malloc(strlen(mcachefs_config_get_journal()) + strlen(mcachefs_journal_suffix) + 1);
     strcpy(journal_tgt, mcachefs_config_get_journal());
     strcat(journal_tgt, mcachefs_journal_suffix);
 
@@ -257,25 +238,19 @@ mcachefs_journal_rebuild(const char *rename_path, const char *rename_to)
         if (res <= 0)
             break;
 
-        if (entry.op == mcachefs_journal_op_fsync
-            && strncmp(path, rename_path, rename_path_sz) == 0)
+        if (entry.op == mcachefs_journal_op_fsync && strncmp(path, rename_path, rename_path_sz) == 0)
         {
-            strncpy(altered_path_suffix, &(path[rename_path_sz]),
-                    PATH_MAX - rename_to_sz);
-            res = mcachefs_journal_append_entry(fd_tgt, &entry, altered_path,
-                                                to);
+            strncpy(altered_path_suffix, &(path[rename_path_sz]), PATH_MAX - rename_to_sz);
+            res = mcachefs_journal_append_entry(fd_tgt, &entry, altered_path, to);
             if (res < 0)
                 break;
             continue;
         }
 
 #if 0
-        if (*to && entry.op == mcachefs_journal_op_rename
-            && strncmp(to, rename_path, rename_path_sz) == 0)
+        if (*to && entry.op == mcachefs_journal_op_rename && strncmp(to, rename_path, rename_path_sz) == 0)
         {
-            if (!(entry.op == mcachefs_journal_op_symlink
-                  || entry.op == mcachefs_journal_op_link
-                  || entry.op == mcachefs_journal_op_rename))
+            if (!(entry.op == mcachefs_journal_op_symlink || entry.op == mcachefs_journal_op_link || entry.op == mcachefs_journal_op_rename))
             {
                 Bug("Invalid op for 'to' : %x\n", entry.op);
             }
@@ -283,9 +258,7 @@ mcachefs_journal_rebuild(const char *rename_path, const char *rename_to)
             if (exact_match)
             {
                 already_renamed = 1;
-                res =
-                    mcachefs_journal_append_entry(fd_tgt, &entry, path,
-                                                  rename_to);
+                res = mcachefs_journal_append_entry(fd_tgt, &entry, path, rename_to);
                 if (res < 0)
                     break;
                 continue;
@@ -299,14 +272,10 @@ mcachefs_journal_rebuild(const char *rename_path, const char *rename_to)
 
             if (exact_match &&
                 (entry.op == mcachefs_journal_op_mkdir
-                 || entry.op == mcachefs_journal_op_mknod
-                 || entry.op == mcachefs_journal_op_symlink
-                 || entry.op == mcachefs_journal_op_link))
+                 || entry.op == mcachefs_journal_op_mknod || entry.op == mcachefs_journal_op_symlink || entry.op == mcachefs_journal_op_link))
             {
                 already_renamed = 1;
-                res =
-                    mcachefs_journal_append_entry(fd_tgt, &entry, rename_to,
-                                                  to);
+                res = mcachefs_journal_append_entry(fd_tgt, &entry, rename_to, to);
                 if (res < 0)
                     break;
                 continue;
@@ -314,20 +283,14 @@ mcachefs_journal_rebuild(const char *rename_path, const char *rename_to)
             if (!already_renamed)
             {
                 already_renamed = 1;
-                memset(&rename_entry, 0,
-                       sizeof(struct mcachefs_journal_entry_t));
+                memset(&rename_entry, 0, sizeof(struct mcachefs_journal_entry_t));
                 rename_entry.op = mcachefs_journal_op_rename;
-                res =
-                    mcachefs_journal_append_entry(fd_tgt, &rename_entry,
-                                                  rename_path, rename_to);
+                res = mcachefs_journal_append_entry(fd_tgt, &rename_entry, rename_path, rename_to);
                 if (res < 0)
                     break;
             }
-            strncpy(altered_path_suffix, &(path[rename_path_sz]),
-                    PATH_MAX - rename_to_sz);
-            res =
-                mcachefs_journal_append_entry(fd_tgt, &entry, altered_path,
-                                              to);
+            strncpy(altered_path_suffix, &(path[rename_path_sz]), PATH_MAX - rename_to_sz);
+            res = mcachefs_journal_append_entry(fd_tgt, &entry, altered_path, to);
             if (res < 0)
                 break;
             continue;
@@ -343,9 +306,7 @@ mcachefs_journal_rebuild(const char *rename_path, const char *rename_to)
         Log("At last : was not found, append rename op.\n");
         memset(&rename_entry, 0, sizeof(struct mcachefs_journal_entry_t));
         rename_entry.op = mcachefs_journal_op_rename;
-        res =
-            mcachefs_journal_append_entry(fd_tgt, &rename_entry, rename_path,
-                                          rename_to);
+        res = mcachefs_journal_append_entry(fd_tgt, &rename_entry, rename_path, rename_to);
     }
 
     Log("Finished rebuilding journal.\n");
@@ -367,8 +328,7 @@ mcachefs_journal_rebuild(const char *rename_path, const char *rename_to)
     }
     if (rename(journal_tgt, mcachefs_config_get_journal()))
     {
-        Err("Could not rename %s to %s : err=%d:%s\n", journal_tgt,
-            mcachefs_config_get_journal(), errno, strerror(errno));
+        Err("Could not rename %s to %s : err=%d:%s\n", journal_tgt, mcachefs_config_get_journal(), errno, strerror(errno));
         res = -errno;
     }
 
@@ -409,8 +369,7 @@ mcachefs_journal_was_renamed(const char *newpath)
             continue;
         if (strncmp(newpath, to, entry.to_sz) == 0)
         {
-            Log("Renamed file '%s' : renamed '%s' to '%s'\n", newpath, path,
-                to);
+            Log("Renamed file '%s' : renamed '%s' to '%s'\n", newpath, path, to);
             wasrenamed = 1;
             break;
         }
@@ -423,17 +382,14 @@ mcachefs_journal_was_renamed(const char *newpath)
 }
 
 void
-mcachefs_journal_apply_entry(struct mcachefs_journal_entry_t *entry,
-                             const char *path, const char *to)
+mcachefs_journal_apply_entry(struct mcachefs_journal_entry_t *entry, const char *path, const char *to)
 {
     Log("Apply journal entry : op=%s (%x) : path='%s', to='%s' : "
         "mode=%lo, dev=%ld, uid=%ld, gid=%ld, size=%lu, utimebuf=%lu,%lu\n",
         entry->op <
         mcachefs_journal_op_MAX ? mcachefs_journal_op_label[entry->op] :
         "INVALID", entry->op, path, to, (long) entry->mode,
-        (long) entry->rdev, (long) entry->uid, (long) entry->gid,
-        (unsigned long) entry->size, entry->utimbuf.actime,
-        entry->utimbuf.modtime);
+        (long) entry->rdev, (long) entry->uid, (long) entry->gid, (unsigned long) entry->size, entry->utimbuf.actime, entry->utimbuf.modtime);
 
     char *realpath = mcachefs_makepath_source(path);
     char *realto = NULL;
@@ -449,53 +405,45 @@ mcachefs_journal_apply_entry(struct mcachefs_journal_entry_t *entry,
     case mcachefs_journal_op_mknod:
         if (mknod(realpath, entry->mode, entry->rdev))
         {
-            Err("Could not mknod %s : err=%d:%s\n", realpath, errno,
-                strerror(errno));
+            Err("Could not mknod %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         if (chown(realpath, entry->uid, entry->gid))
         {
-            Err("After mknod : Could not chown %s : err=%d:%s\n", realpath,
-                errno, strerror(errno));
+            Err("After mknod : Could not chown %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         break;
     case mcachefs_journal_op_mkdir:
         if (mkdir(realpath, entry->mode))
         {
-            Err("Could not mkdir %s : err=%d:%s\n", realpath, errno,
-                strerror(errno));
+            Err("Could not mkdir %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         if (chown(realpath, entry->uid, entry->gid))
         {
-            Err("After mkdir : Could not chown %s : err=%d:%s\n", realpath,
-                errno, strerror(errno));
+            Err("After mkdir : Could not chown %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         break;
     case mcachefs_journal_op_unlink:
         if (unlink(realpath))
         {
-            Err("Could not unlink %s : err=%d:%s\n", realpath, errno,
-                strerror(errno));
+            Err("Could not unlink %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         break;
     case mcachefs_journal_op_rmdir:
         if (rmdir(realpath))
         {
-            Err("Could not rmdir %s : err=%d:%s\n", realpath, errno,
-                strerror(errno));
+            Err("Could not rmdir %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         break;
     case mcachefs_journal_op_rename:
         if (rename(realpath, realto))
         {
-            Err("Could not rename %s -> %s : err=%d:%s\n", realpath, realto,
-                errno, strerror(errno));
+            Err("Could not rename %s -> %s : err=%d:%s\n", realpath, realto, errno, strerror(errno));
         }
         break;
     case mcachefs_journal_op_symlink:
         if (symlink(to, realpath))
         {
-            Err("Could not symlink %s -> %s : err=%d:%s\n", realpath, realto,
-                errno, strerror(errno));
+            Err("Could not symlink %s -> %s : err=%d:%s\n", realpath, realto, errno, strerror(errno));
         }
         break;
     case mcachefs_journal_op_link:
@@ -504,37 +452,32 @@ mcachefs_journal_apply_entry(struct mcachefs_journal_entry_t *entry,
     case mcachefs_journal_op_chmod:
         if (chmod(realpath, entry->mode))
         {
-            Err("Could not chmod %s : err=%d:%s\n", realpath, errno,
-                strerror(errno));
+            Err("Could not chmod %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         break;
     case mcachefs_journal_op_chown:
         if (chown(realpath, entry->uid, entry->gid))
         {
-            Err("Could not chown %s : err=%d:%s\n", realpath, errno,
-                strerror(errno));
+            Err("Could not chown %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         break;
     case mcachefs_journal_op_truncate:
         if (truncate(realpath, entry->size))
         {
-            Err("Could not truncate %s : err=%d:%s\n", realpath, errno,
-                strerror(errno));
+            Err("Could not truncate %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         break;
     case mcachefs_journal_op_utime:
         if (utime(realpath, &(entry->utimbuf)))
         {
-            Err("Could not utime %s : err=%d:%s\n", realpath, errno,
-                strerror(errno));
+            Err("Could not utime %s : err=%d:%s\n", realpath, errno, strerror(errno));
         }
         break;
 #if 0
     case mcachefs_journal_op_fsync:
         if ((res = mcachefs_write_back(path)) != 0)
         {
-            Err("Could not write back %s : err=%d:%s\n", path, -res,
-                strerror(-res));
+            Err("Could not write back %s : err=%d:%s\n", path, -res, strerror(-res));
         }
         break;
 #endif
@@ -560,8 +503,7 @@ mcachefs_journal_apply_updates(const char *journal)
 
     if (fd == -1)
     {
-        Err("Could not read journal '%s' : err=%d:%s\n",
-            mcachefs_config_get_journal(), errno, strerror(errno));
+        Err("Could not read journal '%s' : err=%d:%s\n", mcachefs_config_get_journal(), errno, strerror(errno));
         return -EIO;
     }
 
@@ -602,8 +544,7 @@ mcachefs_journal_apply_fsync(const char *journal)
 
     if (fd == -1)
     {
-        Err("Could not read journal '%s' : err=%d:%s\n",
-            mcachefs_config_get_journal(), errno, strerror(errno));
+        Err("Could not read journal '%s' : err=%d:%s\n", mcachefs_config_get_journal(), errno, strerror(errno));
         return -EIO;
     }
 
@@ -666,8 +607,7 @@ mcachefs_journal_apply()
     {
         Bug("Already have pending fsync files !\n");
     }
-    mcachefs_journal_fsync.total_files = mcachefs_journal_fsync.files_ok =
-        mcachefs_journal_fsync.files_error = 0;
+    mcachefs_journal_fsync.total_files = mcachefs_journal_fsync.files_ok = mcachefs_journal_fsync.files_error = 0;
 
     mcachefs_journal_action = mcachefs_journal_action_update;
 
@@ -691,9 +631,7 @@ mcachefs_journal_apply()
     res = rename(mcachefs_config_get_journal(), mcachefs_journal_fsync_path);
     if (res == -1)
     {
-        Bug("Could not rename '%s' to '%s' : err=%d:%s\n",
-            mcachefs_config_get_journal(), mcachefs_journal_fsync_path,
-            errno, strerror(errno));
+        Bug("Could not rename '%s' to '%s' : err=%d:%s\n", mcachefs_config_get_journal(), mcachefs_journal_fsync_path, errno, strerror(errno));
     }
 
     if (mcachefs_journal_apply_fsync(mcachefs_journal_fsync_path))
@@ -703,17 +641,13 @@ mcachefs_journal_apply()
         return;
     }
 
-    if (mcachefs_journal_fsync.files_ok + mcachefs_journal_fsync.files_error
-        == mcachefs_journal_fsync.total_files)
+    if (mcachefs_journal_fsync.files_ok + mcachefs_journal_fsync.files_error == mcachefs_journal_fsync.total_files)
     {
         Info("Journal has no files to sync (total=%d, ok=%d, error=%d).\n",
-             mcachefs_journal_fsync.total_files,
-             mcachefs_journal_fsync.files_ok,
-             mcachefs_journal_fsync.files_error);
+             mcachefs_journal_fsync.total_files, mcachefs_journal_fsync.files_ok, mcachefs_journal_fsync.files_error);
         if (unlink(mcachefs_journal_fsync_path))
         {
-            Bug("Could not unlink '%s' : err=%d:%s\n",
-                mcachefs_journal_fsync_path, errno, strerror(errno));
+            Bug("Could not unlink '%s' : err=%d:%s\n", mcachefs_journal_fsync_path, errno, strerror(errno));
         }
         mcachefs_journal_action = mcachefs_journal_action_none;
     }
@@ -731,21 +665,16 @@ mcachefs_notify_sync_end(const char *path, int success)
         mcachefs_journal_fsync.files_error++;
 
     Info("Journal fsync : writeback of '%s' %s (total=%d, ok=%d, error=%d)\n",
-         path, success ? "successful" : "failed",
-         mcachefs_journal_fsync.total_files, mcachefs_journal_fsync.files_ok,
-         mcachefs_journal_fsync.files_error);
+         path, success ? "successful" : "failed", mcachefs_journal_fsync.total_files, mcachefs_journal_fsync.files_ok, mcachefs_journal_fsync.files_error);
 
-    if (mcachefs_journal_fsync.files_ok + mcachefs_journal_fsync.files_error
-        == mcachefs_journal_fsync.total_files)
+    if (mcachefs_journal_fsync.files_ok + mcachefs_journal_fsync.files_error == mcachefs_journal_fsync.total_files)
     {
         Info("End of fsync : finishing !\n");
         if (unlink(mcachefs_journal_fsync_path))
         {
-            Bug("Could not unlink '%s' : err=%d:%s\n",
-                mcachefs_journal_fsync_path, errno, strerror(errno));
+            Bug("Could not unlink '%s' : err=%d:%s\n", mcachefs_journal_fsync_path, errno, strerror(errno));
         }
-        mcachefs_journal_fsync.total_files = mcachefs_journal_fsync.files_ok =
-            mcachefs_journal_fsync.files_error = 0;
+        mcachefs_journal_fsync.total_files = mcachefs_journal_fsync.files_ok = mcachefs_journal_fsync.files_error = 0;
         mcachefs_journal_action = mcachefs_journal_action_none;
 
     }
@@ -759,8 +688,7 @@ mcachefs_journal_drop()
 
     if (truncate(mcachefs_config_get_journal(), 0))
     {
-        Err("Could not ftruncate journal : err=%d:%s\n", errno,
-            strerror(errno));
+        Err("Could not ftruncate journal : err=%d:%s\n", errno, strerror(errno));
         exit(-1);
     }
 
@@ -801,8 +729,7 @@ mcachefs_journal_dump(struct mcachefs_file_t *mvops)
 
     if (fd == -1)
     {
-        Err("Could not read journal '%s' : err=%d:%s\n",
-            mcachefs_config_get_journal(), errno, strerror(errno));
+        Err("Could not read journal '%s' : err=%d:%s\n", mcachefs_config_get_journal(), errno, strerror(errno));
         mcachefs_journal_unlock();
         Log("\tJournal mutex unlock... OK.\n");
         return;
@@ -829,9 +756,7 @@ mcachefs_journal_dump(struct mcachefs_file_t *mvops)
                      mcachefs_journal_op_MAX ?
                      mcachefs_journal_op_label[entry.op] : "INVALID",
                      entry.op, path, to, (long) entry.mode,
-                     (long) entry.rdev, (long) entry.uid, (long) entry.gid,
-                     (unsigned long) entry.size, entry.utimbuf.actime,
-                     entry.utimbuf.modtime);
+                     (long) entry.rdev, (long) entry.uid, (long) entry.gid, (unsigned long) entry.size, entry.utimbuf.actime, entry.utimbuf.modtime);
         entry_nb++;
     }
 

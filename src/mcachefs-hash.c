@@ -13,28 +13,29 @@ const uint32_t Polynomial = 0xEDB88320;
 
 // compute CRC32 (bitwise algorithm), taken from https://create.stephan-brumme.com/crc32/
 
-uint32_t crc32_bitwise(const void* data, size_t length, uint32_t previousCrc32)
+uint32_t
+crc32_bitwise(const void *data, size_t length, uint32_t previousCrc32)
 {
-  uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint8_t* current = (const uint8_t*) data;
+    uint32_t crc = ~previousCrc32;      // same as previousCrc32 ^ 0xFFFFFFFF
+    const uint8_t *current = (const uint8_t *) data;
 
-  while (*current && length-- != 0)
-  {
-    crc ^= *current++;
-    for (int j = 0; j < 8; j++)
+    while (*current && length-- != 0)
     {
-      // branch-free
-      crc = (crc >> 1) ^ (-((int32_t)(crc & 1)) & Polynomial);
+        crc ^= *current++;
+        for (int j = 0; j < 8; j++)
+        {
+            // branch-free
+            crc = (crc >> 1) ^ (-((int32_t) (crc & 1)) & Polynomial);
 
-      // branching, much slower:
-      //if (crc & 1)
-      //  crc = (crc >> 1) ^ Polynomial;
-      //else
-      //  crc =  crc >> 1;
+            // branching, much slower:
+            //if (crc & 1)
+            //  crc = (crc >> 1) ^ Polynomial;
+            //else
+            //  crc =  crc >> 1;
+        }
     }
-  }
-  //  Log("crc32(%s, %d, %lx) = %lx\n", (const char*)data, length, previousCrc32, ~crc);
-  return ~crc; // same as crc ^ 0xFFFFFFFF
+    //  Log("crc32(%s, %d, %lx) = %lx\n", (const char*)data, length, previousCrc32, ~crc);
+    return ~crc;                // same as crc ^ 0xFFFFFFFF
 }
 #endif
 
@@ -49,10 +50,11 @@ continueHashPartial(hash_t crc, const char *str, int sz)
 {
     int cur, t;
 
-    for (cur = 0; *str; cur++) {
+    for (cur = 0; *str; cur++)
+    {
         t = ((crc >> 56) ^ (*str++)) & 0xFF;
         crc = crc64table[t] ^ (crc << 8);
-        if ( cur == sz )
+        if (cur == sz)
         {
             break;
         }

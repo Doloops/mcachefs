@@ -21,9 +21,7 @@
  * @type the type (for coherency check)
  * @return the found or created fh
  */
-mcachefs_fh_t
-mcachefs_fileid_get(struct mcachefs_metadata_t *mdata, const char *path,
-                    mcachefs_file_type_t type);
+mcachefs_fh_t mcachefs_fileid_get(struct mcachefs_metadata_t *mdata, const char *path, mcachefs_file_type_t type);
 
 /**
  * Decrement use of the fh - locks mcachefs_file_lock
@@ -72,9 +70,7 @@ int mcachefs_file_getfd(struct mcachefs_file_t *mfile, int real, int flags);
  * @real 1 for the real fd, 0 for the backing
  * @return the corresponding fd
  */
-int
-mcachefs_file_getfd_mode(struct mcachefs_file_t *mfile, int real, int flags,
-                         mode_t mode);
+int mcachefs_file_getfd_mode(struct mcachefs_file_t *mfile, int real, int flags, mode_t mode);
 
 /**
  * Decrement use_real_fd or use_backing_fd
@@ -86,15 +82,12 @@ void mcachefs_file_putfd(struct mcachefs_file_t *, int real);
 /**
  * Extend size to (at least) offset
  */
-void
-mcachefs_file_update_metadata(struct mcachefs_file_t *mfile, off_t size,
-                              int modified);
+void mcachefs_file_update_metadata(struct mcachefs_file_t *mfile, off_t size, int modified);
 
 /**
  * Get metadata from an openned file (locks mcachefs_metadata_lock() )
  */
-struct mcachefs_metadata_t *mcachefs_file_get_metadata(struct mcachefs_file_t
-                                                       *mfile);
+struct mcachefs_metadata_t *mcachefs_file_get_metadata(struct mcachefs_file_t *mfile);
 
 /**
  * Walk down the list of fds to find the next file to backup
@@ -186,4 +179,3 @@ int mcachefs_file_timeslices_count_open();
 void mcachefs_file_timeslices_clear_metadata_id();
 
 #endif /* MCACHEFSFILE_H_ */
-
