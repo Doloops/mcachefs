@@ -486,10 +486,19 @@ mcachefs_metadata_allocate()
 }
 
 #if 1
+/**
+ * This implementation may be faster because we don't iterate over strings to size them.
+ * Just rebuild a stack of levels in reverse order and unroll the path from root to leaf.
+ */
 int
 mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path, int path_size)
 {
-    Log("Equals : mdata=%p:%s (father=%llu), path=%s, path_size=%d\n", mdata, mdata->d_name, mdata->father, path, path_size);
+    Log("Equals : mdata=%p:%s (%llu, father=%llu), path=%s, path_size=%d\n", mdata, mdata->d_name, mdata->id, mdata->father, path, path_size);
+    if ( strcmp(path, "/") == 0 )
+    {
+        return mdata->id == mcachefs_metadata_id_root;
+    }
+    
     const char *namestack[MCACHEFS_METADATA_MAX_LEVELS];
     int levels = 0;
 
@@ -551,7 +560,7 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path, in
         Log("Found a perfect match !!\n");
         return 1;
     }
-    Log("Colliding ! remaining level=%d, current_name=%s\n", current_level, current_name);
+    Log("Colliding ! remaining level=%d\n", current_level);
     return 0;
 }
 #else
@@ -2549,6 +2558,7 @@ mcachefs_metadata_fill_entry(struct mcachefs_file_t *mfile)
 void
 mcachefs_metadata_fill(const char *path)
 {
+    Log("mcachefs_metadata_fill(%s)\n", path);
     struct mcachefs_metadata_t *metadata = mcachefs_metadata_find_entry(path);
     if (metadata)
     {

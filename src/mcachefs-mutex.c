@@ -53,11 +53,11 @@ mcachefs_mutex_lock(struct mcachefs_mutex_t *mutex, const char *name, const char
     int res;
     pthread_t me = pthread_self();
 
-    Log("MUTEX LOCKING mutex %s from %s\n", name, context);
+    Log_Mutex("MUTEX LOCKING mutex %s from %s\n", name, context);
     res = pthread_mutex_lock(&(mutex->mutex));
     if (res == 0)
     {
-        Log("MUTEX LOCKED mutex %s from %s\n", name, context);
+        Log_Mutex("MUTEX LOCKED mutex %s from %s\n", name, context);
         mutex->owner = me;
         mutex->context = context;
         return;
@@ -90,7 +90,7 @@ mcachefs_mutex_check_locked(struct mcachefs_mutex_t *mutex, const char *name, co
 void
 mcachefs_mutex_unlock(struct mcachefs_mutex_t *mutex, const char *name, const char *context)
 {
-    Log("MUTEX UNLOCK mutex %s from %s\n", name, context);
+    Log_Mutex("MUTEX UNLOCK mutex %s from %s\n", name, context);
     int res;
     pthread_t me = pthread_self();
 
