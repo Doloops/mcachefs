@@ -747,6 +747,7 @@ mcachefs_destroy(void *conn)
 
     mcachefs_file_stop_thread();
     mcachefs_transfer_stop_threads();
+    mcachefs_config_run_pre_umount_cmd();
 }
 
 struct fuse_operations mcachefs_oper =
