@@ -5,6 +5,7 @@
 
 const char *DEFAULT_PREFIX = "/tmp/mcachefs";
 
+const char *NO_COMMAND = "<none>";
 const int DEFAULT_VERBOSE = 0;
 
 void trim_last_separator(char *path);
@@ -50,6 +51,8 @@ static struct fuse_opt mcachefs_opts[] = {
     {"backup-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]), 0},
     {"write-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK]), 0},
     {"metadata-threads=%lu", offsetof(struct mcachefs_config, transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]), 0},
+    {"pre-mount-cmd=%s", offsetof(struct mcachefs_config, pre_mount_cmd), 0},
+    {"post-umount-cmd=%s", offsetof(struct mcachefs_config, post_umount_cmd), 0},
     FUSE_OPT_END
 };
 
@@ -66,6 +69,8 @@ static void print_usage(const char* program_name) {
     Info("\tbackup-threads\t: number of threads to use for backup of files (download from source to target)\n");
     Info("\twrite-threads\t: number of threads to use for write files back to source (when 'apply_journal' is called)\n");
     Info("\tmetadata-threads: number of threads to use for retrieving metadata from source (retrieving folders and files information)\n");
+    Info("\tpre-mount-cmd\t: run a command right before mounting. This can be used to auto-mount the source folder.\n");
+    Info("\tpost-umount-cmd\t: run a command right after unmounting. If you used pre-mount-cmd to mount the source, use this to umount it.\n");
     Info("\n");
     Info("Example:\n");
     Info("\t%s /mnt/backend /mnt/localcache -o cache=/tmp/mycache,journal=/tmp/cachejournal\n", program_name);
@@ -195,6 +200,10 @@ mcachefs_dump_config(struct mcachefs_config *config)
     Info("* Backup Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_BACKUP]);
     Info("* Write Back Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_WRITEBACK]);
     Info("* Metadata Threads %d\n", config->transfer_threads_type_nb[MCACHEFS_TRANSFER_TYPE_METADATA]);
+    if ( config->pre_mount_cmd != NULL )
+        Info("* Pre Mount Command %s\n", config->pre_mount_cmd );
+    if ( config->post_umount_cmd != NULL )
+        Info("* Post UMount Command %s\n", config->post_umount_cmd);
 
     int argc;
     for (argc = 0; argc < config->fuse_args.argc; argc++)
@@ -429,4 +438,24 @@ mcachefs_config_set_cache_prefix(const char *prefix)
     current_config->cache_prefix = strdup(prefix);
 
     trim_last_separator(current_config->cache_prefix);
+}
+
+int mcachefs_config_run_cmd(const char *cmd)
+{
+    if (cmd != NULL)
+    {
+        Log("Calling command %s\n", cmd);
+        return system( cmd );
+    }
+  return 0;
+}
+
+int mcachefs_config_run_pre_mount_cmd()
+{
+  return mcachefs_config_run_cmd(current_config->pre_mount_cmd);
+}
+
+int mcachefs_config_run_post_umount_cmd()
+{
+  return mcachefs_config_run_cmd(current_config->post_umount_cmd);
 }
