@@ -578,8 +578,7 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
         
         if ( *cpath != *current_name )
         {
-            Log("Colliding !\n");
-            Bug("."); 
+            Log("Colliding ! cpath=%s, current_name=%s\n", cpath, current_name);
             return 0;
         }
         current_name++;
@@ -590,7 +589,6 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path,
         return 1;
     }
     Log("Colliding ! remaining level=%d, current_name=%s\n", current_level, current_name);
-    Bug(".");
     return 0;
 }
 #else
