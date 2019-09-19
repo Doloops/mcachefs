@@ -33,10 +33,10 @@ main(int argc, char *argv[])
 
     mcachefs_set_current_config(config);
 
-    if ( mcachefs_config_run_pre_mount_cmd() != 0 )
+    if (mcachefs_config_run_pre_mount_cmd() != 0)
     {
-      Info("Pre-mount command failed!!\n");
-      return 1;
+        Info("Pre-mount command failed!!\n");
+        return 1;
     }
 
     mcachefs_file_timeslice_init_variables();

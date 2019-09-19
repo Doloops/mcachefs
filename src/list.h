@@ -64,8 +64,7 @@ struct list_head
  * the prev/next entries already!
  */
 static inline void
-__list_add(struct list_head *new,
-           struct list_head *prev, struct list_head *next)
+__list_add(struct list_head *new, struct list_head *prev, struct list_head *next)
 {
     next->prev = new;
     new->next = next;
@@ -108,8 +107,7 @@ list_add_tail(struct list_head *new, struct list_head *head)
  * the prev/next entries already!
  */
 static __inline__ void
-__list_add_rcu(struct list_head *new,
-               struct list_head *prev, struct list_head *next)
+__list_add_rcu(struct list_head *new, struct list_head *prev, struct list_head *next)
 {
     new->next = next;
     new->prev = prev;

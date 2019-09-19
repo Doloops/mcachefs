@@ -28,14 +28,12 @@ struct mcachefs_transfer_queue_t
     struct mcachefs_transfer_queue_t *next;
 };
 
-struct mcachefs_transfer_queue_t *mcachefs_transfer_queue_head = NULL,
-    *mcachefs_transfer_queue_tail = NULL;
+struct mcachefs_transfer_queue_t *mcachefs_transfer_queue_head = NULL, *mcachefs_transfer_queue_tail = NULL;
 
 sem_t mcachefs_transfer_sem[MCACHEFS_TRANSFER_TYPES];
 
-struct mcachefs_file_t *mcachefs_transfer_get_next_file_to_back_locked(int
-                                                                       type);
-void mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile);
+struct mcachefs_file_t *mcachefs_transfer_get_next_file_to_back_locked(int transfer_type);
+void mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile, int transfer_type);
 void *mcachefs_transfer_thread(void *arg);
 
 #define TIME_DIFF(NOW, LAST) ((NOW.tv_sec-LAST.tv_sec)*1000000 + (NOW.tv_usec-LAST.tv_usec))
@@ -52,7 +50,8 @@ mcachefs_transfer_backfile(struct mcachefs_file_t *mfile,
      */
     mcachefs_file_lock_file(mfile);
 
-    if (mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS)
+    if (mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED
+        || mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS || mfile->cache_status == MCACHEFS_FILE_BACKING_DONE)
     {
         Log("Backing in progress for file '%s'\n", mfile->path);
         mcachefs_file_unlock_file(mfile);
@@ -62,8 +61,7 @@ mcachefs_transfer_backfile(struct mcachefs_file_t *mfile,
     if (mcachefs_check_fileincache(mfile, metadata_st))
     {
         mfile->cache_status = MCACHEFS_FILE_BACKING_DONE;
-        Log("Backing ok for file '%s' (status set to %d)\n", mfile->path,
-            mfile->cache_status);
+        Log("Backing ok for file '%s' (status set to %d)\n", mfile->path, mfile->cache_status);
         mcachefs_file_unlock_file(mfile);
         return 0;
     }
@@ -114,11 +112,9 @@ mcachefs_transfer_writeback(const char *path)
 
     if (mfile->cache_status != MCACHEFS_FILE_BACKING_DONE)
     {
-        Bug("Error ! mfile=%s has backing=%d\n", mfile->path,
-            mfile->cache_status);
+        Bug("Error ! mfile=%s has backing=%d\n", mfile->path, mfile->cache_status);
     }
-    return mcachefs_transfer_queue_file(mfile,
-                                        MCACHEFS_TRANSFER_TYPE_WRITEBACK);
+    return mcachefs_transfer_queue_file(mfile, MCACHEFS_TRANSFER_TYPE_WRITEBACK);
 }
 
 void
@@ -132,19 +128,14 @@ mcachefs_transfer_start_threads()
 
     for (type = 0; type < MCACHEFS_TRANSFER_TYPES; type++)
     {
-        mcachefs_transfer_threads_nb +=
-            mcachefs_config_get_transfer_threads_nb(type);
+        mcachefs_transfer_threads_nb += mcachefs_config_get_transfer_threads_nb(type);
     }
 
     Info("Total threads : %d\n", mcachefs_transfer_threads_nb);
 
 
-    mcachefs_transfer_threads = (struct mcachefs_transfer_thread_t *)
-        malloc(sizeof(struct mcachefs_transfer_thread_t) *
-               mcachefs_transfer_threads_nb);
-    memset(mcachefs_transfer_threads, 0,
-           sizeof(struct mcachefs_transfer_thread_t) *
-           mcachefs_transfer_threads_nb);
+    mcachefs_transfer_threads = (struct mcachefs_transfer_thread_t *) malloc(sizeof(struct mcachefs_transfer_thread_t) * mcachefs_transfer_threads_nb);
+    memset(mcachefs_transfer_threads, 0, sizeof(struct mcachefs_transfer_thread_t) * mcachefs_transfer_threads_nb);
 
     for (type = 0; type < MCACHEFS_TRANSFER_TYPES; type++)
     {
@@ -159,12 +150,10 @@ mcachefs_transfer_start_threads()
     cur = 0;
     for (type = 0; type < MCACHEFS_TRANSFER_TYPES; type++)
     {
-        for (curt = 0; curt < mcachefs_config_get_transfer_threads_nb(type);
-             curt++)
+        for (curt = 0; curt < mcachefs_config_get_transfer_threads_nb(type); curt++)
         {
             mcachefs_transfer_threads[cur].type = type;
-            pthread_create(&thid, &attrs, mcachefs_transfer_thread,
-                           &(mcachefs_transfer_threads[cur]));
+            pthread_create(&thid, &attrs, mcachefs_transfer_thread, &(mcachefs_transfer_threads[cur]));
             mcachefs_transfer_threads[cur].threadid = thid;
             Log("Created new thread %lx, cur=%d, type=%d\n", thid, cur, type);
             cur++;
@@ -190,16 +179,11 @@ mcachefs_transfer_stop_threads()
         thid = mcachefs_transfer_threads[cur].threadid;
         if (thid == 0)
         {
-            Err("Invalid thid=0 for cur=%d, type=%d\n", cur,
-                mcachefs_transfer_threads[cur].type);
+            Err("Invalid thid=0 for cur=%d, type=%d\n", cur, mcachefs_transfer_threads[cur].type);
             continue;
         }
-        Log("Posting STOP for thid=%lx, type=%d\n",
-            mcachefs_transfer_threads[cur].threadid,
-            mcachefs_transfer_threads[cur].type);
-        sem_post(&
-                 (mcachefs_transfer_sem
-                  [mcachefs_transfer_threads[cur].type]));
+        Log("Posting STOP for thid=%lx, type=%d\n", mcachefs_transfer_threads[cur].threadid, mcachefs_transfer_threads[cur].type);
+        sem_post(&(mcachefs_transfer_sem[mcachefs_transfer_threads[cur].type]));
     }
     for (cur = 0; cur < mcachefs_transfer_threads_nb; cur++)
     {
@@ -209,8 +193,7 @@ mcachefs_transfer_stop_threads()
         Info("Waiting for thread %lx\n", thid);
         if ((res = pthread_join(thid, &arg)) != 0)
         {
-            Err("Could not join transfer thread %lx : err=%d:%s\n", thid,
-                res, strerror(res));
+            Err("Could not join transfer thread %lx : err=%d:%s\n", thid, res, strerror(res));
         }
     }
     Info("Transfer threads interrupted.\n");
@@ -220,8 +203,7 @@ void *
 mcachefs_transfer_thread(void *arg)
 {
     struct mcachefs_file_t *mfile = NULL;
-    struct mcachefs_transfer_thread_t *me =
-        (struct mcachefs_transfer_thread_t *) arg;
+    struct mcachefs_transfer_thread_t *me = (struct mcachefs_transfer_thread_t *) arg;
     int type = ~0;
 
     if (me == NULL)
@@ -231,8 +213,7 @@ mcachefs_transfer_thread(void *arg)
 
     type = me->type;
 
-    Info("Transfer thread %lx (type=%d) up and running.\n",
-         (unsigned long) pthread_self(), type);
+    Info("Transfer thread %lx (type=%d) up and running.\n", (unsigned long) pthread_self(), type);
 
     while (1)
     {
@@ -241,8 +222,7 @@ mcachefs_transfer_thread(void *arg)
 
         if (mcachefs_config_get_read_state() == MCACHEFS_STATE_QUITTING)
         {
-            Log("Interrupting transfer thread %lx\n",
-                (unsigned long) pthread_self());
+            Log("Interrupting transfer thread %lx\n", (unsigned long) pthread_self());
             return NULL;
         }
 
@@ -254,8 +234,7 @@ mcachefs_transfer_thread(void *arg)
             Bug("Could not locate which file to back !\n");
         }
 
-        Log("Locked Transfer lock. file to transfer '%s', locking...\n",
-            mfile->path);
+        Log("Locked Transfer lock. file to transfer '%s', locking...\n", mfile->path);
 
         mcachefs_file_lock_file(mfile);
 
@@ -271,7 +250,7 @@ mcachefs_transfer_thread(void *arg)
 
         Log("Transfer file '%s'\n", mfile->path);
 
-        mcachefs_transfer_do_transfer(mfile);
+        mcachefs_transfer_do_transfer(mfile, type);
         mcachefs_transfer_lock();
         me->currentfile = NULL;
         mcachefs_transfer_unlock();
@@ -286,20 +265,17 @@ mcachefs_transfer_queue_file(struct mcachefs_file_t *mfile, int type)
     struct mcachefs_transfer_queue_t *transfer;
     mcachefs_transfer_lock();
 
-    for (transfer = mcachefs_transfer_queue_head; transfer; transfer
-         = transfer->next)
+    for (transfer = mcachefs_transfer_queue_head; transfer; transfer = transfer->next)
     {
         if (transfer->mfile == mfile)
         {
-            Err("Already asked transfer for file '%s'\n", mfile->path);
+            Err("Already asked transfer for file '%s', type=%d\n", mfile->path, type);
             mcachefs_transfer_unlock();
             return -EEXIST;
         }
     }
 
-    transfer =
-        (struct mcachefs_transfer_queue_t *)
-        malloc(sizeof(struct mcachefs_transfer_queue_t));
+    transfer = (struct mcachefs_transfer_queue_t *) malloc(sizeof(struct mcachefs_transfer_queue_t));
     transfer->mfile = mfile;
     transfer->next = NULL;
     transfer->type = type;
@@ -332,8 +308,7 @@ mcachefs_transfer_get_next_file_to_back_locked(int type)
         Bug("NULL HEAD !\n");
     }
 
-    for (transfer = mcachefs_transfer_queue_head; transfer;
-         transfer = transfer->next)
+    for (transfer = mcachefs_transfer_queue_head; transfer; transfer = transfer->next)
     {
         if (transfer->type == type)
             break;
@@ -348,8 +323,7 @@ mcachefs_transfer_get_next_file_to_back_locked(int type)
 
     mfile = transfer->mfile;
 
-    Log("[NEXT : %s (type=%d, asked=%d)\n", mfile->path, transfer->type,
-        type);
+    Log("[NEXT : %s (type=%d, asked=%d)\n", mfile->path, transfer->type, type);
 
     if (last)
     {
@@ -358,8 +332,7 @@ mcachefs_transfer_get_next_file_to_back_locked(int type)
         {
             if (mcachefs_transfer_queue_tail != transfer)
             {
-                Bug("Tail=%p is not transfer=%p, but next is NULL !",
-                    mcachefs_transfer_queue_tail, transfer);
+                Bug("Tail=%p is not transfer=%p, but next is NULL !", mcachefs_transfer_queue_tail, transfer);
             }
             mcachefs_transfer_queue_tail = last;
         }
@@ -371,8 +344,7 @@ mcachefs_transfer_get_next_file_to_back_locked(int type)
         {
             if (mcachefs_transfer_queue_tail != transfer)
             {
-                Bug("Tail=%p is not transfer=%p, but next is NULL !",
-                    mcachefs_transfer_queue_tail, transfer);
+                Bug("Tail=%p is not transfer=%p, but next is NULL !", mcachefs_transfer_queue_tail, transfer);
             }
             mcachefs_transfer_queue_tail = NULL;
         }
@@ -384,23 +356,19 @@ mcachefs_transfer_get_next_file_to_back_locked(int type)
 
 void mcachefs_transfer_do_backing(struct mcachefs_file_t *mfile);
 
-void
-mcachefs_transfer_do_writeback(struct mcachefs_file_t *mfile,
-                               struct utimbuf *timbuf);
+void mcachefs_transfer_do_writeback(struct mcachefs_file_t *mfile, struct utimbuf *timbuf);
 int mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking);
 
 void
-mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile)
+mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile, int transfer_type)
 {
-    int tobacking;
     off_t size;
     struct mcachefs_metadata_t *mdata;
     struct utimbuf timbuf;
 
     if (mcachefs_config_get_read_state() == MCACHEFS_STATE_HANDSUP)
     {
-        Err("While backing file for '%s' : mcachefs state set to HANDSUP.\n",
-            mfile->path);
+        Err("While backing file for '%s' : mcachefs state set to HANDSUP.\n", mfile->path);
         return;
     }
 
@@ -425,22 +393,25 @@ mcachefs_transfer_do_transfer(struct mcachefs_file_t *mfile)
     mcachefs_metadata_release(mdata);
 
     mcachefs_file_lock_file(mfile);
-    tobacking = (mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS);
 
-    mfile->transfer.tobacking = tobacking;
+    mfile->transfer.tobacking = (transfer_type == MCACHEFS_TRANSFER_TYPE_BACKUP);
     mfile->transfer.total_size = size;
     mfile->transfer.transfered_size = 0;
     mfile->transfer.rate = 0;
     mfile->transfer.total_time = 0;
     mcachefs_file_unlock_file(mfile);
 
-    if (tobacking)
+    if (transfer_type == MCACHEFS_TRANSFER_TYPE_BACKUP)
     {
         mcachefs_transfer_do_backing(mfile);
     }
-    else
+    else if (transfer_type == MCACHEFS_TRANSFER_TYPE_WRITEBACK)
     {
         mcachefs_transfer_do_writeback(mfile, &timbuf);
+    }
+    else
+    {
+        Err("Invalid transfer for path='%s', cache_status=%d, transfer_type=%d\n", mfile->path, mfile->cache_status, transfer_type);
     }
 }
 
@@ -448,6 +419,12 @@ void
 mcachefs_transfer_do_backing(struct mcachefs_file_t *mfile)
 {
     char *backingpath;
+
+    if (mcachefs_fileincache(mfile->path))
+    {
+        Err("File '%s' already in cache !\n", mfile->path);
+        return;
+    }
     if (mcachefs_createfile_cache(mfile->path, 0644))
     {
         Err("Could not create backing path for '%s' !\n", mfile->path);
@@ -478,8 +455,7 @@ mcachefs_transfer_do_backing(struct mcachefs_file_t *mfile)
     {
         if (unlink(backingpath))
         {
-            Err("Could not unlink(%s) : err=%d:%s\n", backingpath, errno,
-                strerror(errno));
+            Err("Could not unlink(%s) : err=%d:%s\n", backingpath, errno, strerror(errno));
         }
         free(backingpath);
     }
@@ -487,8 +463,7 @@ mcachefs_transfer_do_backing(struct mcachefs_file_t *mfile)
 }
 
 void
-mcachefs_transfer_do_writeback(struct mcachefs_file_t *mfile,
-                               struct utimbuf *timbuf)
+mcachefs_transfer_do_writeback(struct mcachefs_file_t *mfile, struct utimbuf *timbuf)
 {
     struct stat realstat;
     char *realpath;
@@ -500,8 +475,7 @@ mcachefs_transfer_do_writeback(struct mcachefs_file_t *mfile,
     }
     if (stat(realpath, &realstat) == 0)
     {
-        if (realstat.st_mtime >= timbuf->modtime && realstat.st_size
-            == mfile->transfer.total_size)
+        if (realstat.st_mtime >= timbuf->modtime && realstat.st_size == mfile->transfer.total_size)
         {
             free(realpath);
 #ifdef __MCACHEFS_TRANSFER_SKIP_FRESHER_SAME_SIZE
@@ -512,14 +486,14 @@ mcachefs_transfer_do_writeback(struct mcachefs_file_t *mfile,
             Info("File '%s' : real file seems fresher, and both have same size, but sync anyway !\n", mfile->path);
 #endif
         }
-        Log("Will write back : real mtime=%lu, real size=%lu, metatstat mtime=%lu, metastat size=%lu\n", realstat.st_mtime, (unsigned long) realstat.st_size, timbuf->modtime, (unsigned long) mfile->transfer.total_size);
+        Log("Will write back : real mtime=%lu, real size=%lu, metatstat mtime=%lu, metastat size=%lu\n",
+            realstat.st_mtime, (unsigned long) realstat.st_size, timbuf->modtime, (unsigned long) mfile->transfer.total_size);
     }
     if (mcachefs_transfer_file(mfile, 0) == 0)
     {
         if (utime(realpath, timbuf))
         {
-            Err("Could not utime(%s) : err=%d:%s\n", realpath, errno,
-                strerror(errno));
+            Err("Could not utime(%s) : err=%d:%s\n", realpath, errno, strerror(errno));
             mcachefs_notify_sync_end(mfile->path, 0);
         }
         else
@@ -586,9 +560,7 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
        * This situation can be normal at backup, when we already performed a truncate() on that file :
        * this changed metadata, but not the real file yet (waiting for apply)
        */
-        Err("Diverging sizes for %s : source size=%lu, asked size=%lu\n",
-            mfile->path, (unsigned long) source_stat.st_size,
-            (unsigned long) size);
+        Err("Diverging sizes for %s : source size=%lu, asked size=%lu\n", mfile->path, (unsigned long) source_stat.st_size, (unsigned long) size);
         size = size < source_stat.st_size ? size : source_stat.st_size;
         Err("Corrected size to %lu\n", (unsigned long) size);
     }
@@ -633,9 +605,7 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
             }
             if (copied != tocopy)
             {
-                Err("Could not write !! : copied=%ld tocopy=%ld, err=%d:%s\n",
-                    (unsigned long) copied, (unsigned long) tocopy, errno,
-                    strerror(errno));
+                Err("Could not write !! : copied=%ld tocopy=%ld, err=%d:%s\n", (unsigned long) copied, (unsigned long) tocopy, errno, strerror(errno));
                 goto copyerr;
             }
         }
@@ -645,9 +615,7 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
             copied = pread(source_fd, window, tocopy, offset);
             if (tocopy != copied)
             {
-                Err("Could not read !! : copied=%ld tocopy=%ld, err=%d:%s\n",
-                    (unsigned long) copied, (unsigned long) tocopy, errno,
-                    strerror(errno));
+                Err("Could not read !! : copied=%ld tocopy=%ld, err=%d:%s\n", (unsigned long) copied, (unsigned long) tocopy, errno, strerror(errno));
                 goto copyerr;
             }
             if (mcachefs_config_get_read_state() == MCACHEFS_STATE_QUITTING)
@@ -659,9 +627,7 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
             copied = pwrite(target_fd, window, tocopy, offset);
             if (tocopy != copied)
             {
-                Err("Could not write !! : copied=%ld tocopy=%ld, err=%d:%s\n",
-                    (unsigned long) copied, (unsigned long) tocopy, errno,
-                    strerror(errno));
+                Err("Could not write !! : copied=%ld tocopy=%ld, err=%d:%s\n", (unsigned long) copied, (unsigned long) tocopy, errno, strerror(errno));
                 goto copyerr;
             }
 
@@ -689,8 +655,7 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
 
         adjusted_rate = (global_rate + rate) / 2;
 
-        if (mcachefs_config_get_transfer_max_rate() && adjusted_rate
-            >= mcachefs_config_get_transfer_max_rate())
+        if (mcachefs_config_get_transfer_max_rate() && adjusted_rate >= mcachefs_config_get_transfer_max_rate())
         {
           /**
            * rate = max kb/s
@@ -701,14 +666,9 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
             copy_interval = TIME_DIFF(now, before);
 
             penalty.tv_sec = 0;
-            Log("window_size=%lu, max_rate=%lu\n",
-                (unsigned long) window_size,
-                (unsigned long) mcachefs_config_get_transfer_max_rate());
-            penalty.tv_nsec =
-                ((window_size << 20) /
-                 mcachefs_config_get_transfer_max_rate());
-            Log("penalty raw=%ldns, copy_interval=%ldns\n", penalty.tv_nsec,
-                (long) copy_interval << 10);
+            Log("window_size=%lu, max_rate=%lu\n", (unsigned long) window_size, (unsigned long) mcachefs_config_get_transfer_max_rate());
+            penalty.tv_nsec = ((window_size << 20) / mcachefs_config_get_transfer_max_rate());
+            Log("penalty raw=%ldns, copy_interval=%ldns\n", penalty.tv_nsec, (long) copy_interval << 10);
             if (penalty.tv_nsec > (copy_interval << 10))
                 penalty.tv_nsec -= (copy_interval << 10);
             if (penalty.tv_nsec > 900000000)
@@ -717,26 +677,25 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
             nanosleep(&penalty, NULL);
         }
 
-        Log("Transfered %luk of %luk (%lu%%), rate current=%lukb/s, global=%lukb/s, adjusted=%lukb/s, window size=%lu\n", ((unsigned long) offset) >> 10, ((unsigned long) size) >> 10, (unsigned long) (offset * 100 / size), (unsigned long) rate, (unsigned long) global_rate, (unsigned long) adjusted_rate, (unsigned long) window_size);
+        Log("Transfered %luk of %luk (%lu%%), rate current=%lukb/s, global=%lukb/s, adjusted=%lukb/s, window size=%lu\n", ((unsigned long) offset) >> 10,
+            ((unsigned long) size) >> 10, (unsigned long) (offset * 100 / size), (unsigned long) rate, (unsigned long) global_rate,
+            (unsigned long) adjusted_rate, (unsigned long) window_size);
 
         if (global_rate < 10 && window_size > 1 << 12)
         {
             window_size = window_size / 2;
-            Log("Reducing window size to %lu, interval=%lu\n",
-                (unsigned long) window_size, (unsigned long) interval);
+            Log("Reducing window size to %lu, interval=%lu\n", (unsigned long) window_size, (unsigned long) interval);
         }
         else if (global_rate > 100 && window_size < window_size_max)
         {
             window_size = window_size * 2;
-            Log("Augmenting window size to %lu, interval=%lu\n",
-                (unsigned long) window_size, (unsigned long) interval);
+            Log("Augmenting window size to %lu, interval=%lu\n", (unsigned long) window_size, (unsigned long) interval);
             if (window_size_alloced < window_size)
             {
                 window = (char *) realloc(window, window_size);
                 if (window == NULL)
                 {
-                    Err("OOM : could not realloc window up to size=%lu\n",
-                        (unsigned long) window_size);
+                    Err("OOM : could not realloc window up to size=%lu\n", (unsigned long) window_size);
                     goto copyerr;
                 }
                 window_size_alloced = window_size;
@@ -758,7 +717,8 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
 
     gettimeofday(&now, NULL);
     interval = TIME_DIFF(now, begin_copy);
-    Log("End of transfer (to %s) for '%s' : %ld usec, copied '%lu', rate=%lu kb/sec\n", tobacking ? "cache" : "source", mfile->path, interval, (unsigned long) size, (unsigned long) ((size * 1000) / interval));
+    Log("End of transfer (to %s) for '%s' : %ld usec, copied '%lu', rate=%lu kb/sec\n", tobacking ? "cache" : "source",
+        mfile->path, interval, (unsigned long) size, (unsigned long) ((size * 1000) / interval));
 
     mcachefs_file_putfd(mfile, MCACHEFS_FILE_SOURCE_REAL);
     mcachefs_file_putfd(mfile, MCACHEFS_FILE_SOURCE_BACKING);
@@ -782,6 +742,11 @@ mcachefs_transfer_file(struct mcachefs_file_t *mfile, int tobacking)
     return -EIO;
 }
 
+/**
+ * Must be in line with MCACHEFS_TRANSFER_TYPE_*
+ */
+const char *mcachefs_transfer_type_names[] = { "backup", "writeback", "metadata", NULL };
+
 void
 mcachefs_transfer_dump(struct mcachefs_file_t *mvops)
 {
@@ -798,9 +763,10 @@ mcachefs_transfer_dump(struct mcachefs_file_t *mvops)
 
     for (cur = 0; cur < mcachefs_transfer_threads_nb; cur++)
     {
-        __VOPS_WRITE(mvops, "[Thread %lx, type=%d]\n",
+        __VOPS_WRITE(mvops, "[Thread %lx, type=%s]\n",
                      mcachefs_transfer_threads[cur].threadid,
-                     mcachefs_transfer_threads[cur].type);
+                     (mcachefs_transfer_threads[cur].type < MCACHEFS_TRANSFER_TYPES) ?
+                     mcachefs_transfer_type_names[mcachefs_transfer_threads[cur].type] : "Unknown");
         mfile = mcachefs_transfer_threads[cur].currentfile;
         if (mfile == NULL)
             continue;
@@ -818,18 +784,14 @@ mcachefs_transfer_dump(struct mcachefs_file_t *mvops)
             total_size += size;
             rate = mfile->transfer.rate;
             total_rate += rate;
-            tobacking =
-                (mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS
-                 || mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED);
+            tobacking = (mfile->cache_status == MCACHEFS_FILE_BACKING_IN_PROGRESS || mfile->cache_status == MCACHEFS_FILE_BACKING_ASKED);
             mcachefs_file_unlock_file(mfile);
 
             __VOPS_WRITE(mvops,
                          "\t%s %s : %luk/%luk (%lu%%), rate=%lukb/s\n",
                          (tobacking ? "Backup   " : "Writeback"),
                          mfile->path, ((unsigned long) offset) >> 10,
-                         ((unsigned long) size) >> 10,
-                         size ? (unsigned long) (offset * 100 / size) : 0,
-                         (unsigned long) rate);
+                         ((unsigned long) size) >> 10, size ? (unsigned long) (offset * 100 / size) : 0, (unsigned long) rate);
         }
     }
     if (total_size)
@@ -837,9 +799,7 @@ mcachefs_transfer_dump(struct mcachefs_file_t *mvops)
         __VOPS_WRITE(mvops,
                      "Total transfered : %luk/%luk (%lu%%), rate=%lukb/s\n",
                      ((unsigned long) total_transfered) >> 10,
-                     ((unsigned long) total_size) >> 10,
-                     (unsigned long) (total_transfered * 100 / total_size),
-                     (unsigned long) total_rate);
+                     ((unsigned long) total_size) >> 10, (unsigned long) (total_transfered * 100 / total_size), (unsigned long) total_rate);
     }
     for (mqueue = mcachefs_transfer_queue_head; mqueue; mqueue = mqueue->next)
     {
@@ -847,19 +807,13 @@ mcachefs_transfer_dump(struct mcachefs_file_t *mvops)
     }
     if (mcachefs_transfer_queue_head)
     {
-        __VOPS_WRITE(mvops, "\nFiles to be transfered (%d files) :\n",
-                     totaltotransfer);
+        __VOPS_WRITE(mvops, "\nFiles to be transfered (%d files) :\n", totaltotransfer);
     }
     for (mqueue = mcachefs_transfer_queue_head; mqueue; mqueue = mqueue->next)
     {
-        tobacking =
-            (mqueue->mfile->cache_status != MCACHEFS_FILE_BACKING_DONE);
+        tobacking = (mqueue->mfile->cache_status != MCACHEFS_FILE_BACKING_DONE);
         __VOPS_WRITE(mvops, "\t%s %s\n",
-                     (mqueue->mfile->type ==
-                      mcachefs_file_type_dir) ? "Fill meta" : (tobacking ?
-                                                               "Backup   " :
-                                                               "Writeback"),
-                     mqueue->mfile->path);
+                     (mqueue->mfile->type == mcachefs_file_type_dir) ? "Fill meta" : (tobacking ? "Backup   " : "Writeback"), mqueue->mfile->path);
     }
     mcachefs_transfer_unlock();
 }

@@ -10,6 +10,10 @@
 
 #include <sys/types.h>
 
+// #define __MCACHEFS_HASH_USE_CRC32
+//#define __MCACHEFS_HASH_USE_CRC64
+#define __MCACHEFS_HASH_USE_32_6_16
+
 /**
  * Fuse File Handlers, provided by mcachefs at open() and used in read(), write() and release()
  */
@@ -23,8 +27,20 @@ typedef unsigned long long mcachefs_metadata_id;
 /**
  * Hash values, used for hashing paths
  */
-typedef unsigned long long int hash_t;
+#ifdef __MCACHEFS_HASH_USE_CRC32
+typedef unsigned long int hash_t;
+#define __MCACHEFS_HASH_ALGORITHM "crc32"
+#endif
 
+#ifdef __MCACHEFS_HASH_USE_CRC64
+typedef unsigned long long int hash_t;
+#define __MCACHEFS_HASH_ALGORITHM "crc64"
+#endif
+
+#ifdef __MCACHEFS_HASH_USE_32_6_16
+typedef unsigned int hash_t;
+#define __MCACHEFS_HASH_ALGORITHM "32.6.16"
+#endif
 
 /**
  * Mcachefs MUTEX type
@@ -146,10 +162,11 @@ struct mcachefs_file_t
  * Various states and enums
  */
 
-#define MCACHEFS_FILE_BACKING_ASKED       0
-#define MCACHEFS_FILE_BACKING_IN_PROGRESS 1
-#define MCACHEFS_FILE_BACKING_DONE        2
-#define MCACHEFS_FILE_BACKING_ERROR       3
+#define MCACHEFS_FILE_BACKING_NONE        0
+#define MCACHEFS_FILE_BACKING_ASKED       1
+#define MCACHEFS_FILE_BACKING_IN_PROGRESS 2
+#define MCACHEFS_FILE_BACKING_DONE        3
+#define MCACHEFS_FILE_BACKING_ERROR       4
 
 /**
  * States of the backing mechanism

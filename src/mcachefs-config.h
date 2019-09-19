@@ -73,7 +73,7 @@ struct mcachefs_config
 
     char *pre_mount_cmd;
 
-    char *pre_umount_cmd;
+    char *post_umount_cmd;
 };
 
 struct mcachefs_config *mcachefs_parse_config(int argc, char *argv[]);
@@ -145,7 +145,7 @@ void mcachefs_config_set_cache_prefix(const char *prefix);
  */
 int mcachefs_config_run_cmd(const char *cmd);
 int mcachefs_config_run_pre_mount_cmd();
-int mcachefs_config_run_pre_umount_cmd();
+int mcachefs_config_run_post_umount_cmd();
 
 
 #endif // __MCACHEFS_CONFIG_H
