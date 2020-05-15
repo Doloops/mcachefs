@@ -421,8 +421,9 @@ mcachefs_transfer_do_backing(struct mcachefs_file_t *mfile)
 
     if (mcachefs_fileincache(mfile->path))
     {
-        Err("File '%s' already in cache !\n", mfile->path);
-        return;
+        // Err("File '%s' already in cache !\n", mfile->path);
+        // return;
+        Info("File '%s' already in cache but is older than the one in the source.\n", mfile->path);
     }
     if (mcachefs_createfile_cache(mfile->path, 0644))
     {
