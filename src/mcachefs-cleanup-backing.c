@@ -23,13 +23,10 @@ struct mcachefs_backing_files
 };
 
 void
-mcachefs_backing_append_file(struct mcachefs_backing_files *filelist,
-                             char *path, struct stat *st)
+mcachefs_backing_append_file(struct mcachefs_backing_files *filelist, char *path, struct stat *st)
 {
     struct mcachefs_backing_file *file;
-    file =
-        (struct mcachefs_backing_file *)
-        malloc(sizeof(struct mcachefs_backing_file));
+    file = (struct mcachefs_backing_file *) malloc(sizeof(struct mcachefs_backing_file));
     file->path = path;
     file->age = 0;
     file->size = st->st_size;
@@ -48,8 +45,7 @@ mcachefs_backing_append_file(struct mcachefs_backing_files *filelist,
 }
 
 static void
-mcachefs_build_backing_files(struct mcachefs_backing_files *filelist,
-                             const char *prefix, int dirfd)
+mcachefs_build_backing_files(struct mcachefs_backing_files *filelist, const char *prefix, int dirfd)
 {
     int fd;
     DIR *dp;
@@ -82,8 +78,7 @@ mcachefs_build_backing_files(struct mcachefs_backing_files *filelist,
             continue;
         }
 
-        Log("Prefix=%s, file=%s => %s, type=%u\n", prefix, de->d_name, path,
-            st.st_mode);
+        Log("Prefix=%s, file=%s => %s, type=%u\n", prefix, de->d_name, path, st.st_mode);
         if (S_ISDIR(st.st_mode))
         {
             strcat(path, "/");
@@ -138,7 +133,8 @@ mcachefs_backing_update_metadata(struct mcachefs_backing_files *filelist)
 
         if (file->size != mdata->st.st_size)
         {
-            Err("Diverging sizes for '%s' : file->size=%luk, mdata->st.st_size=%luk\n", file->path, (unsigned long) file->size >> 10, (unsigned long) mdata->st.st_size >> 10);
+            Err("Diverging sizes for '%s' : file->size=%luk, mdata->st.st_size=%luk\n", file->path,
+                (unsigned long) file->size >> 10, (unsigned long) mdata->st.st_size >> 10);
         }
     }
     mcachefs_metadata_unlock();
@@ -147,8 +143,7 @@ mcachefs_backing_update_metadata(struct mcachefs_backing_files *filelist)
 void
 mcachefs_backing_sort(struct mcachefs_backing_files *filelist)
 {
-    struct mcachefs_backing_file *file =
-        filelist->head, *file1, *previous, *next;
+    struct mcachefs_backing_file *file = filelist->head, *file1, *previous, *next;
     if (!file)
         return;
 
@@ -243,8 +238,7 @@ mcachefs_cleanup_backing()      // struct mcachefs_file_t *mvops, int simulate)
 #if 0
         if (simulate)
         {
-            __VOPS_WRITE(mvops, "%lu\t%lu\t%s\n", (unsigned long) file->age,
-                         (unsigned long) file->size, file->path);
+            __VOPS_WRITE(mvops, "%lu\t%lu\t%s\n", (unsigned long) file->age, (unsigned long) file->size, file->path);
         }
         else
         {
@@ -254,8 +248,7 @@ mcachefs_cleanup_backing()      // struct mcachefs_file_t *mvops, int simulate)
                 relative_path++;
             if (unlinkat(backingfd, relative_path, 0))
             {
-                Err("Could not unlink '%s' : err=%d:%s\n", file->path, errno,
-                    strerror(errno));
+                Err("Could not unlink '%s' : err=%d:%s\n", file->path, errno, strerror(errno));
             }
 #if 0
         }
@@ -264,8 +257,7 @@ mcachefs_cleanup_backing()      // struct mcachefs_file_t *mvops, int simulate)
 #if 0
     if (simulate)
     {
-        __VOPS_WRITE(mvops, "Total : %lu Mb\n",
-                     ((unsigned long) total) >> 20);
+        __VOPS_WRITE(mvops, "Total : %lu Mb\n", ((unsigned long) total) >> 20);
     }
 #endif
     free(prefix);

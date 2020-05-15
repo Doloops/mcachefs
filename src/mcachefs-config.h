@@ -68,6 +68,10 @@ struct mcachefs_config
     char *cache_prefix;
 
     char *cleanup_cache_prefix;
+
+    char *pre_mount_cmd;
+
+    char *post_umount_cmd;
 };
 
 struct mcachefs_config *mcachefs_parse_config(int argc, char *argv[]);
@@ -132,5 +136,14 @@ const char *mcachefs_config_get_cleanup_cache_prefix();
 
 const char *mcachefs_config_get_cache_prefix();
 void mcachefs_config_set_cache_prefix(const char *prefix);
+
+
+/**
+ * run custom commands before mount and umount
+ */
+int mcachefs_config_run_cmd(const char *cmd);
+int mcachefs_config_run_pre_mount_cmd();
+int mcachefs_config_run_post_umount_cmd();
+
 
 #endif // __MCACHEFS_CONFIG_H

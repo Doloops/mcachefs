@@ -41,7 +41,7 @@ void mcachefs_vops_parse(struct mcachefs_file_t *mfile);
 void mcachefs_vops_cleanup_vops(struct mcachefs_file_t *mfile);
 
 /**
- * Get the size of the currently openned vops file, or default size if none openned.
+ * Get the size of the currently openned vops file, or default size if none opened.
  */
 off_t mcachefs_vops_getsize(const char *path);
 
@@ -49,7 +49,7 @@ off_t mcachefs_vops_getsize(const char *path);
  * VOPS file writer
  */
 #define __VOPS_WRITE(__mfile,...) \
-  do { \
+  do { if ( __mfile != NULL ) { \
     int wrb = snprintf(&(__mfile->contents[__mfile->contents_size]), __mfile->contents_alloced - __mfile->contents_size, __VA_ARGS__ ); \
     if ( wrb < 0 ) \
       { Bug ( "." ); } \
@@ -57,8 +57,9 @@ off_t mcachefs_vops_getsize(const char *path);
       { __mfile->contents_size += wrb; break; } \
     __mfile->contents_alloced += wrb * 2; \
     __mfile->contents = (char*) realloc ( __mfile->contents, __mfile->contents_alloced ); \
+    /* Log("Now mvops content of %s is at %p\n", mvops->path, __mfile->contents); */ \
     if ( __mfile->contents == NULL ) \
       { Bug ( "." ); } \
-  } while (1)
+  } else if (1) { fprintf(stderr, __VA_ARGS__); break; } else { break; } } while(1)
 
 #endif /* MCACHEFSVOPS_H_ */

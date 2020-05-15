@@ -11,11 +11,9 @@
 const int mcachefs_file_timeslice_nb = MCACHEFS_FILE_TIMESLICE_NB;
 
 static const int mcachefs_file_timeslice_garbage = MCACHEFS_FILE_TIMESLICE_NB;
-static const int mcachefs_file_timeslice_freed =
-    MCACHEFS_FILE_TIMESLICE_NB + 1;
+static const int mcachefs_file_timeslice_freed = MCACHEFS_FILE_TIMESLICE_NB + 1;
 
-struct mcachefs_file_t *mcachefs_file_timeslices[MCACHEFS_FILE_TIMESLICE_NB +
-                                                 2];
+struct mcachefs_file_t *mcachefs_file_timeslices[MCACHEFS_FILE_TIMESLICE_NB + 2];
 
 int mcachefs_file_timeslice_current = 0;
 
@@ -38,8 +36,7 @@ mcachefs_file_timeslice_init_variables()
 }
 
 void
-mcachefs_file_timeslice_insert_in_ts(struct mcachefs_file_t *mfile,
-                                     int timeslice)
+mcachefs_file_timeslice_insert_in_ts(struct mcachefs_file_t *mfile, int timeslice)
 {
     /**
      * We are supposed to have the file lock held here
@@ -48,27 +45,26 @@ mcachefs_file_timeslice_insert_in_ts(struct mcachefs_file_t *mfile,
     /**
      * Always insert at current mcachefs_file_timeslice_current
      */
-    if (mfile->timeslice != -1 || mfile->timeslice_previous
-        || mfile->timeslice_next)
+    if (mfile->timeslice != -1 || mfile->timeslice_previous || mfile->timeslice_next)
     {
-        Bug("Invalid timeslice while inserting : mfile=%p, ts=%d, previous=%p, next=%p\n", mfile, mfile->timeslice, mfile->timeslice_previous, mfile->timeslice_next);
+        Bug("Invalid timeslice while inserting : mfile=%p, ts=%d, previous=%p, next=%p\n", mfile, mfile->timeslice,
+            mfile->timeslice_previous, mfile->timeslice_next);
     }
 
     mfile->timeslice = timeslice;
 
     if (mcachefs_file_timeslices[mfile->timeslice])
     {
-        mcachefs_file_timeslices[mfile->timeslice]->timeslice_previous =
-            mfile;
+        mcachefs_file_timeslices[mfile->timeslice]->timeslice_previous = mfile;
     }
     mfile->timeslice_next = mcachefs_file_timeslices[mfile->timeslice];
     mcachefs_file_timeslices[mfile->timeslice] = mfile;
 
-    Log("post-insert : mfile=%p, timeslice=%d, head=%p, next=%p, next->previous=%p (next->next=%p)\n", mfile, mfile->timeslice, mcachefs_file_timeslices[mfile->timeslice], mfile->timeslice_next, mfile->timeslice_next ? mfile->timeslice_next->timeslice_previous : NULL, mfile->timeslice_next ? mfile->timeslice_next->timeslice_next : NULL);
+    Log("post-insert : mfile=%p, timeslice=%d, head=%p, next=%p, next->previous=%p (next->next=%p)\n", mfile,
+        mfile->timeslice, mcachefs_file_timeslices[mfile->timeslice], mfile->timeslice_next,
+        mfile->timeslice_next ? mfile->timeslice_next->timeslice_previous : NULL, mfile->timeslice_next ? mfile->timeslice_next->timeslice_next : NULL);
 
-    if (mfile->timeslice_next && mfile->timeslice_next->timeslice_next
-        && mfile->timeslice_next->timeslice_next->timeslice_previous !=
-        mfile->timeslice_next)
+    if (mfile->timeslice_next && mfile->timeslice_next->timeslice_next && mfile->timeslice_next->timeslice_next->timeslice_previous != mfile->timeslice_next)
     {
         Bug(".");
     }
@@ -77,23 +73,20 @@ mcachefs_file_timeslice_insert_in_ts(struct mcachefs_file_t *mfile,
 void
 mcachefs_file_timeslice_insert(struct mcachefs_file_t *mfile)
 {
-    mcachefs_file_timeslice_insert_in_ts(mfile,
-                                         mcachefs_file_timeslice_current);
+    mcachefs_file_timeslice_insert_in_ts(mfile, mcachefs_file_timeslice_current);
 }
 
 void
 mcachefs_file_timeslice_insert_in_freed(struct mcachefs_file_t *mfile)
 {
-    mcachefs_file_timeslice_insert_in_ts(mfile,
-                                         mcachefs_file_timeslice_freed);
+    mcachefs_file_timeslice_insert_in_ts(mfile, mcachefs_file_timeslice_freed);
 }
 
 struct mcachefs_file_t *
 mcachefs_file_timeslice_get_freed()
 {
     mcachefs_file_check_locked();
-    struct mcachefs_file_t *mfile =
-        mcachefs_file_timeslices[mcachefs_file_timeslice_freed];
+    struct mcachefs_file_t *mfile = mcachefs_file_timeslices[mcachefs_file_timeslice_freed];
     if (mfile)
     {
         mcachefs_file_timeslice_remove(mfile);
@@ -119,9 +112,7 @@ mcachefs_file_timeslice_remove(struct mcachefs_file_t *mfile)
     {
         if (mfile->timeslice_previous->timeslice_next != mfile)
         {
-            Bug("Corrupted list : mfile=%p, previous=%p, previous->next=%p\n",
-                mfile, mfile->timeslice_previous,
-                mfile->timeslice_previous->timeslice_next);
+            Bug("Corrupted list : mfile=%p, previous=%p, previous->next=%p\n", mfile, mfile->timeslice_previous, mfile->timeslice_previous->timeslice_next);
         }
         mfile->timeslice_previous->timeslice_next = mfile->timeslice_next;
     }
@@ -129,25 +120,23 @@ mcachefs_file_timeslice_remove(struct mcachefs_file_t *mfile)
     {
         if (mfile->timeslice_next->timeslice_previous != mfile)
         {
-            Bug("Corrupted list : mfile=%p, next=%p, next->previous=%p\n",
-                mfile, mfile->timeslice_next,
-                mfile->timeslice_next->timeslice_previous);
+            Bug("Corrupted list : mfile=%p, next=%p, next->previous=%p\n", mfile, mfile->timeslice_next, mfile->timeslice_next->timeslice_previous);
         }
         mfile->timeslice_next->timeslice = mfile->timeslice;
         mfile->timeslice_next->timeslice_previous = mfile->timeslice_previous;
     }
 
-    Log("post-remove : mfile=%p, prev=%p, prev->next=%p, next=%p, next->prev=%p\n", mfile, mfile->timeslice_previous, mfile->timeslice_previous ? mfile->timeslice_previous->timeslice_next : NULL, mfile->timeslice_next, mfile->timeslice_next ? mfile->timeslice_next->timeslice_previous : NULL);
+    Log("post-remove : mfile=%p, prev=%p, prev->next=%p, next=%p, next->prev=%p\n", mfile, mfile->timeslice_previous,
+        mfile->timeslice_previous ? mfile->timeslice_previous->timeslice_next : NULL, mfile->timeslice_next,
+        mfile->timeslice_next ? mfile->timeslice_next->timeslice_previous : NULL);
 
     if (mfile->timeslice_previous && mfile->timeslice_next)
     {
-        if (mfile->timeslice_previous->timeslice_next->timeslice_previous !=
-            mfile->timeslice_previous)
+        if (mfile->timeslice_previous->timeslice_next->timeslice_previous != mfile->timeslice_previous)
         {
             Bug(".");
         }
-        if (mfile->timeslice_next->timeslice_previous->timeslice_next !=
-            mfile->timeslice_next)
+        if (mfile->timeslice_next->timeslice_previous->timeslice_next != mfile->timeslice_next)
         {
             Bug(".");
         }
@@ -196,15 +185,10 @@ mcachefs_file_timeslice_freshen(struct mcachefs_file_t *mfile)
 }
 
 void
-mcachefs_file_timeslice_cleanup_list(int age,
-                                     void (*action) (struct mcachefs_file_t *
-                                                     mfile))
+mcachefs_file_timeslice_cleanup_list(int age, void (*action)(struct mcachefs_file_t * mfile))
 {
-    int ts_to_cleanup =
-        (mcachefs_file_timeslice_current + mcachefs_file_timeslice_nb -
-         age) % mcachefs_file_timeslice_nb;
-    struct mcachefs_file_t *head =
-        mcachefs_file_timeslices[ts_to_cleanup], *mfile, *mnext;
+    int ts_to_cleanup =(mcachefs_file_timeslice_current + mcachefs_file_timeslice_nb - age) % mcachefs_file_timeslice_nb;
+    struct mcachefs_file_t *head = mcachefs_file_timeslices[ts_to_cleanup], *mfile, *mnext;
 
     for (mfile = head; mfile;)
     {
@@ -220,8 +204,7 @@ mcachefs_file_timeslice_cleanup_freed()
 {
     struct mcachefs_file_t *mfile, *mnext;
     Log("TS : Cleanup freed !\n");
-    for (mfile = mcachefs_file_timeslices[mcachefs_file_timeslice_freed];
-         mfile;)
+    for (mfile = mcachefs_file_timeslices[mcachefs_file_timeslice_freed]; mfile;)
     {
         mnext = mfile->timeslice_next;
         Log("TS : Cleanup freed %p\n", mfile);
@@ -242,8 +225,7 @@ mcachefs_file_timeslice_cleanup()
     /**
      * Cleanup files
      */
-    mcachefs_file_timeslice_cleanup_list(mcachefs_config_get_file_ttl(),
-                                         &mcachefs_file_cleanup_file);
+    mcachefs_file_timeslice_cleanup_list(mcachefs_config_get_file_ttl(), &mcachefs_file_cleanup_file);
 
 
     /**
@@ -268,14 +250,10 @@ mcachefs_file_timeslice_update()
      */
     struct mcachefs_file_t *mfile;
 
-    int last_timeslice =
-        (mcachefs_file_timeslice_current + mcachefs_file_timeslice_nb +
-         1) % mcachefs_file_timeslice_nb;
+    int last_timeslice = (mcachefs_file_timeslice_current + mcachefs_file_timeslice_nb + 1) % mcachefs_file_timeslice_nb;
 
-    Log_TS("last=%d => %p\n", last_timeslice,
-           mcachefs_file_timeslices[last_timeslice]);
-    Log_TS("garbage=%d => %p\n", mcachefs_file_timeslice_garbage,
-           mcachefs_file_timeslices[mcachefs_file_timeslice_garbage]);
+    Log_TS("last=%d => %p\n", last_timeslice, mcachefs_file_timeslices[last_timeslice]);
+    Log_TS("garbage=%d => %p\n", mcachefs_file_timeslice_garbage, mcachefs_file_timeslices[mcachefs_file_timeslice_garbage]);
 
 
     // If the next slice is non-empty, we must put it in the garbage slice
@@ -286,8 +264,7 @@ mcachefs_file_timeslice_update()
          */
         if (mcachefs_file_timeslices[mcachefs_file_timeslice_garbage])
         {
-            for (mfile = mcachefs_file_timeslices[last_timeslice];
-                 mfile->timeslice_next; mfile = mfile->timeslice_next);
+            for (mfile = mcachefs_file_timeslices[last_timeslice]; mfile->timeslice_next; mfile = mfile->timeslice_next);
 
             if (mfile->timeslice_next)
             {
@@ -295,21 +272,17 @@ mcachefs_file_timeslice_update()
             }
 
             // mfile is now the tail in n+1 list, we must append it to garbage
-            mfile->timeslice_next =
-                mcachefs_file_timeslices[mcachefs_file_timeslice_garbage];
+            mfile->timeslice_next = mcachefs_file_timeslices[mcachefs_file_timeslice_garbage];
 
-            if (mcachefs_file_timeslices
-                [mcachefs_file_timeslice_garbage]->timeslice_previous)
+            if (mcachefs_file_timeslices[mcachefs_file_timeslice_garbage]->timeslice_previous)
             {
                 Bug("had a previous ?\n");
             }
 
-            mcachefs_file_timeslices
-                [mcachefs_file_timeslice_garbage]->timeslice_previous = mfile;
+            mcachefs_file_timeslices[mcachefs_file_timeslice_garbage]->timeslice_previous = mfile;
 
         }
-        mcachefs_file_timeslices[mcachefs_file_timeslice_garbage] =
-            mcachefs_file_timeslices[last_timeslice];
+        mcachefs_file_timeslices[mcachefs_file_timeslice_garbage] = mcachefs_file_timeslices[last_timeslice];
         mcachefs_file_timeslices[last_timeslice] = NULL;
 
         if (!mcachefs_file_timeslices[mcachefs_file_timeslice_garbage])
@@ -317,41 +290,31 @@ mcachefs_file_timeslice_update()
             Bug("Shall not be here\n");
         }
 
-        mcachefs_file_timeslices[mcachefs_file_timeslice_garbage]->timeslice =
-            mcachefs_file_timeslice_garbage;
+        mcachefs_file_timeslices[mcachefs_file_timeslice_garbage]->timeslice = mcachefs_file_timeslice_garbage;
     }
 
-    mcachefs_file_timeslice_current =
-        (mcachefs_file_timeslice_current + 1) % mcachefs_file_timeslice_nb;
+    mcachefs_file_timeslice_current = (mcachefs_file_timeslice_current + 1) % mcachefs_file_timeslice_nb;
 }
 
 void
-mcachefs_file_timeslices_dump_source(struct mcachefs_file_t *mvops,
-                                     struct mcachefs_file_source_t *source,
-                                     const char *label)
+mcachefs_file_timeslices_dump_source(struct mcachefs_file_t *mvops, struct mcachefs_file_source_t *source, const char *label)
 {
     if (source->fd != -1 || source->nbrd || source->nbwr)
     {
-        __VOPS_WRITE(mvops, ",%s=%d/%d/%d", label,
-                     source->fd, source->use, source->wr);
+        __VOPS_WRITE(mvops, ",%s=%d/%d/%d", label, source->fd, source->use, source->wr);
         if (source->nbrd)
         {
-            __VOPS_WRITE(mvops, " (read #%lu : %luk)",
-                         (unsigned long) source->nbrd,
-                         (unsigned long) source->bytesrd >> 10);
+            __VOPS_WRITE(mvops, " (read #%lu : %luk)", (unsigned long) source->nbrd, (unsigned long) source->bytesrd >> 10);
         }
         if (source->nbwr)
         {
-            __VOPS_WRITE(mvops, " (write #%lu : %luk)",
-                         (unsigned long) source->nbwr,
-                         (unsigned long) source->byteswr >> 10);
+            __VOPS_WRITE(mvops, " (write #%lu : %luk)", (unsigned long) source->nbwr, (unsigned long) source->byteswr >> 10);
         }
     }
 }
 
 void
-mcachefs_file_timeslices_dump_ts(struct mcachefs_file_t *mvops,
-                                 struct mcachefs_file_t *mhead)
+mcachefs_file_timeslices_dump_ts(struct mcachefs_file_t *mvops, struct mcachefs_file_t *mhead)
 {
     char ctype;
     static const char *ctypes = "?FDV????";
@@ -362,9 +325,7 @@ mcachefs_file_timeslices_dump_ts(struct mcachefs_file_t *mvops,
         __VOPS_WRITE(mvops,
                      "\t%p:%s, type=%d, ts=%d, hash=%llx, prev=%p, next=%p, metaid=%lu",
                      mfile, mfile->path, mfile->type, mfile->timeslice,
-                     mfile->hash, mfile->timeslice_previous,
-                     mfile->timeslice_next,
-                     (unsigned long) mfile->metadata_id);
+                     mfile->hash, mfile->timeslice_previous, mfile->timeslice_next, (unsigned long) mfile->metadata_id);
 #endif
         if (mfile->type > 3)
             ctype = '?';
@@ -373,17 +334,14 @@ mcachefs_file_timeslices_dump_ts(struct mcachefs_file_t *mvops,
         __VOPS_WRITE(mvops, "\t%s %c,use=%d", mfile->path, ctype, mfile->use);
         if (mfile->type == mcachefs_file_type_file)
         {
-            mcachefs_file_timeslices_dump_source(mvops,
-                                                 &(mfile->sources
-                                                   [MCACHEFS_FILE_SOURCE_BACKING]),
-                                                 "cache");
-            mcachefs_file_timeslices_dump_source(mvops,
-                                                 &(mfile->sources
-                                                   [MCACHEFS_FILE_SOURCE_REAL]),
-                                                 "source");
+            mcachefs_file_timeslices_dump_source(mvops, &(mfile->sources[MCACHEFS_FILE_SOURCE_BACKING]), "cache");
+            mcachefs_file_timeslices_dump_source(mvops, &(mfile->sources[MCACHEFS_FILE_SOURCE_REAL]), "source");
 
             switch (mfile->cache_status)
             {
+            case MCACHEFS_FILE_BACKING_NONE:
+                __VOPS_WRITE(mvops, ",backing=none");
+                break;
             case MCACHEFS_FILE_BACKING_ASKED:
                 __VOPS_WRITE(mvops, ",backing=asked");
                 break;
@@ -402,9 +360,7 @@ mcachefs_file_timeslices_dump_ts(struct mcachefs_file_t *mvops,
         else if (mfile->type == mcachefs_file_type_vops)
         {
             __VOPS_WRITE(mvops, ", contents=%p, size=%lu, alloced=%lu",
-                         mfile->contents,
-                         (unsigned long) mfile->contents_size,
-                         (unsigned long) mfile->contents_alloced);
+                         mfile->contents, (unsigned long) mfile->contents_size, (unsigned long) mfile->contents_alloced);
         }
         else if (mfile->type == mcachefs_file_type_dir)
         {
@@ -430,11 +386,8 @@ mcachefs_file_timeslices_dump(struct mcachefs_file_t *mvops)
         if (mcachefs_file_timeslices[j])
         {
             __VOPS_WRITE(mvops, "Timeslice : %ds ago (ts=%d)\n",
-                         (mcachefs_file_timeslice_current +
-                          MCACHEFS_FILE_TIMESLICE_NB -
-                          j) % MCACHEFS_FILE_TIMESLICE_NB, j);
-            mcachefs_file_timeslices_dump_ts(mvops,
-                                             mcachefs_file_timeslices[j]);
+                         (mcachefs_file_timeslice_current + MCACHEFS_FILE_TIMESLICE_NB - j) % MCACHEFS_FILE_TIMESLICE_NB, j);
+            mcachefs_file_timeslices_dump_ts(mvops, mcachefs_file_timeslices[j]);
         }
         if (j == 0)
             j = MCACHEFS_FILE_TIMESLICE_NB - 1;
@@ -446,9 +399,7 @@ mcachefs_file_timeslices_dump(struct mcachefs_file_t *mvops)
     if (mcachefs_file_timeslices[mcachefs_file_timeslice_garbage])
     {
         __VOPS_WRITE(mvops, "Garbage :\n");
-        mcachefs_file_timeslices_dump_ts(mvops,
-                                         mcachefs_file_timeslices
-                                         [mcachefs_file_timeslice_garbage]);
+        mcachefs_file_timeslices_dump_ts(mvops, mcachefs_file_timeslices[mcachefs_file_timeslice_garbage]);
     }
 #if 0
     for (j = 0; j < mcachefs_file_timeslice_nb + 2; j++)
@@ -459,9 +410,7 @@ mcachefs_file_timeslices_dump(struct mcachefs_file_t *mvops)
                      mcachefs_file_timeslices[j],
                      j ==
                      mcachefs_file_timeslice_current ? " => current" : "",
-                     j ==
-                     mcachefs_file_timeslice_garbage ? " => garbage" : "",
-                     j == mcachefs_file_timeslice_freed ? " => freed" : "");
+                     j == mcachefs_file_timeslice_garbage ? " => garbage" : "", j == mcachefs_file_timeslice_freed ? " => freed" : "");
         mcachefs_file_timeslices_dump_ts(mvops, mcachefs_file_timeslices[j]);
     }
 #endif
@@ -475,13 +424,13 @@ mcachefs_file_timeslices_count_open()
     int count = 0, ts;
 
     mcachefs_file_lock();
-    struct mcachefs_file_t* file;
+    struct mcachefs_file_t *file;
     for (ts = 0; ts < mcachefs_file_timeslice_nb + 2; ts++)
     {
         file = mcachefs_file_timeslices[ts];
-        while ( file != NULL )
+        while (file != NULL)
         {
-            if ( file->type == mcachefs_file_type_file || file->type == mcachefs_file_type_dir )
+            if (file->type == mcachefs_file_type_file || file->type == mcachefs_file_type_dir)
             {
                 count++;
             }
@@ -498,13 +447,13 @@ mcachefs_file_timeslices_clear_metadata_id()
     int ts;
 
     mcachefs_file_lock();
-    struct mcachefs_file_t* file;
+    struct mcachefs_file_t *file;
     for (ts = 0; ts < mcachefs_file_timeslice_nb + 2; ts++)
     {
         file = mcachefs_file_timeslices[ts];
-        while ( file != NULL )
+        while (file != NULL)
         {
-            if ( file->type == mcachefs_file_type_file || file->type == mcachefs_file_type_dir )
+            if (file->type == mcachefs_file_type_file || file->type == mcachefs_file_type_dir)
             {
                 file->metadata_id = 0;
             }
@@ -513,4 +462,3 @@ mcachefs_file_timeslices_clear_metadata_id()
     }
     mcachefs_file_unlock();
 }
-
