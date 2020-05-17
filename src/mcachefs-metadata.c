@@ -498,7 +498,7 @@ mcachefs_metadata_equals(struct mcachefs_metadata_t *mdata, const char *path, in
     {
         return mdata->id == mcachefs_metadata_id_root;
     }
-    
+
     const char *namestack[MCACHEFS_METADATA_MAX_LEVELS];
     int levels = 0;
 
@@ -1035,7 +1035,7 @@ mcachefs_metadata_fix_double_black(struct mcachefs_metadata_t *mdata)
             }
             else
             {
-                // 2 black children 
+                // 2 black children
                 brother->color = RED;
                 if (up->color == BLACK)
                 {
@@ -1188,13 +1188,16 @@ mcachefs_metadata_do_remove_hash(struct mcachefs_metadata_t *mdata)
                     brother->color = RED;
                 }
             }
-            if (iamleft)
+            if(up)
             {
-                up->left = 0;
-            }
-            else
-            {
-                up->right = 0;
+                if (iamleft)
+                {
+                    up->left = 0;
+                }
+                else
+                {
+                    up->right = 0;
+                }
             }
             Log("Ok, no replacer done !\n");
             return;
